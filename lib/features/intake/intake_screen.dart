@@ -48,17 +48,27 @@ class _IntakeScreenState extends State<IntakeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Bidan Intake', style: Theme.of(context).textTheme.headlineSmall),
+          Text('Input Data Ibu', style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 4),
+          Text(
+            'Diisi oleh bidan saat menemukan tanda bahaya.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
           const SizedBox(height: 16),
           TextField(
             controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Patient name (synthetic)'),
+            decoration: const InputDecoration(labelText: 'Nama pasien (sintetis)'),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _gaController,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Gestational age (weeks)'),
+            decoration: const InputDecoration(
+              labelText: 'Usia kehamilan',
+              suffixText: 'minggu',
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -67,7 +77,10 @@ class _IntakeScreenState extends State<IntakeScreen> {
                 child: TextField(
                   controller: _systolicController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Systolic BP'),
+                  decoration: const InputDecoration(
+                    labelText: 'TD sistolik',
+                    suffixText: 'mmHg',
+                  ),
                   onChanged: (_) => setState(() {}),
                 ),
               ),
@@ -76,23 +89,27 @@ class _IntakeScreenState extends State<IntakeScreen> {
                 child: TextField(
                   controller: _diastolicController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Diastolic BP'),
+                  decoration: const InputDecoration(
+                    labelText: 'TD diastolik',
+                    suffixText: 'mmHg',
+                  ),
                   onChanged: (_) => setState(() {}),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          Text('Gejala bahaya', style: Theme.of(context).textTheme.titleSmall),
           CheckboxListTile(
             value: _severeHeadache,
-            title: const Text('Severe headache'),
+            title: const Text('Sakit kepala berat'),
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
             onChanged: (v) => setState(() => _severeHeadache = v ?? false),
           ),
           CheckboxListTile(
             value: _visualDisturbance,
-            title: const Text('Visual disturbance'),
+            title: const Text('Gangguan penglihatan'),
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
             onChanged: (v) => setState(() => _visualDisturbance = v ?? false),
@@ -100,35 +117,46 @@ class _IntakeScreenState extends State<IntakeScreen> {
           const SizedBox(height: 12),
           DropdownButtonFormField<Urgency>(
             initialValue: _urgency,
-            decoration: const InputDecoration(labelText: 'Urgency'),
+            decoration: const InputDecoration(labelText: 'Tingkat urgensi'),
             items: const [
-              DropdownMenuItem(value: Urgency.routine, child: Text('Routine')),
-              DropdownMenuItem(value: Urgency.urgent, child: Text('Urgent')),
-              DropdownMenuItem(value: Urgency.emergency, child: Text('Emergency')),
+              DropdownMenuItem(value: Urgency.routine, child: Text('Rutin')),
+              DropdownMenuItem(value: Urgency.urgent, child: Text('Mendesak')),
+              DropdownMenuItem(value: Urgency.emergency, child: Text('Darurat')),
             ],
             onChanged: (v) => setState(() => _urgency = v ?? Urgency.routine),
           ),
           if (_showSafetyFlag) ...[
             const SizedBox(height: 16),
-            const SafetyFlagBanner(),
-          ],
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: () {
-              referralState.updateIntake(
-                patientName: _nameController.text,
-                gestationalAgeWeeks: int.tryParse(_gaController.text),
+            SafetyFlagBanner(
+              triggerDetails: ClinicalRules.triggerSummary(
                 systolic: int.tryParse(_systolicController.text),
                 diastolic: int.tryParse(_diastolicController.text),
-                hasSevereHeadache: _severeHeadache,
-                hasVisualDisturbance: _visualDisturbance,
-                urgency: _urgency,
-              );
-              context.go('/facility-match');
-            },
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-              child: Text('Send Referral'),
+                severeHeadache: _severeHeadache,
+                visualDisturbance: _visualDisturbance,
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              icon: const Icon(Icons.send),
+              onPressed: () {
+                referralState.updateIntake(
+                  patientName: _nameController.text,
+                  gestationalAgeWeeks: int.tryParse(_gaController.text),
+                  systolic: int.tryParse(_systolicController.text),
+                  diastolic: int.tryParse(_diastolicController.text),
+                  hasSevereHeadache: _severeHeadache,
+                  hasVisualDisturbance: _visualDisturbance,
+                  urgency: _urgency,
+                );
+                context.go('/facility-match');
+              },
+              label: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('Kirim Rujukan'),
+              ),
             ),
           ),
         ],

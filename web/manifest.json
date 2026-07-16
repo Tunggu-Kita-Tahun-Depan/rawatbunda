@@ -1,11 +1,11 @@
 {
-    "name": "tunggukitatahundepan2026",
-    "short_name": "tunggukitatahundepan2026",
+    "name": "RawatBunda",
+    "short_name": "RawatBunda",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#ECFEFF",
+    "theme_color": "#0891B2",
+    "description": "RawatBunda \u2014 koordinasi rujukan darurat ibu hamil (demo, data simulasi).",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

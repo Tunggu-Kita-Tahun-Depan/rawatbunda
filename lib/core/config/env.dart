@@ -3,8 +3,7 @@
 /// The Supabase keys below are baked in as defaults so a plain
 /// `flutter run -d chrome` starts in Supabase mode (login + realtime).
 /// This is safe ONLY for the anon/publishable key — it is public by design
-/// and data is protected by row-level security. NEVER put the
-/// service_role/secret key here or anywhere in the app.
+/// and data is protected by row-level security.
 ///
 /// To force in-memory demo mode (no backend, no login) run with:
 ///   flutter run -d chrome --dart-define=SUPABASE_URL= --dart-define=SUPABASE_KEY=

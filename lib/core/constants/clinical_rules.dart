@@ -11,7 +11,7 @@ abstract final class ClinicalRules {
   static const int severeDiastolicThreshold = 110;
 
   static const String safetyFlagMessage =
-      'Possible severe pre-eclampsia signs — decision support, not diagnosis';
+      'Kemungkinan tanda preeklampsia berat — pendukung keputusan, bukan diagnosis';
 
   /// IF systolic >= 160 OR diastolic >= 110, AND at least one danger
   /// symptom is present → show the safety flag.
@@ -23,5 +23,21 @@ abstract final class ClinicalRules {
     final bpFlag = (systolic ?? 0) >= severeSystolicThreshold ||
         (diastolic ?? 0) >= severeDiastolicThreshold;
     return bpFlag && anyDangerSymptom;
+  }
+
+  /// The facts that triggered the flag, shown to the user so the rule is
+  /// explainable (PRD principle 6: show triggering data + rule version).
+  static String triggerSummary({
+    required int? systolic,
+    required int? diastolic,
+    required bool severeHeadache,
+    required bool visualDisturbance,
+  }) {
+    final parts = <String>[
+      'TD ${systolic ?? '-'}/${diastolic ?? '-'} mmHg',
+      if (severeHeadache) 'sakit kepala berat',
+      if (visualDisturbance) 'gangguan penglihatan',
+    ];
+    return 'Pemicu: ${parts.join(' · ')} (aturan $rulesVersion)';
   }
 }

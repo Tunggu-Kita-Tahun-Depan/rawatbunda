@@ -10,18 +10,18 @@ import 'repositories/referral_repository.dart';
 import 'state/auth_state.dart';
 import 'state/referral_state.dart';
 
-class IbuRujukApp extends StatefulWidget {
-  const IbuRujukApp({super.key, this.useSupabase});
+class RawatBundaApp extends StatefulWidget {
+  const RawatBundaApp({super.key, this.useSupabase});
 
   /// Override the backend mode. Defaults to whether Supabase keys are
   /// configured. Tests pass false to stay in-memory (no network).
   final bool? useSupabase;
 
   @override
-  State<IbuRujukApp> createState() => _IbuRujukAppState();
+  State<RawatBundaApp> createState() => _RawatBundaAppState();
 }
 
-class _IbuRujukAppState extends State<IbuRujukApp> {
+class _RawatBundaAppState extends State<RawatBundaApp> {
   late final AppAuthState _auth;
   late final ReferralState _referralState;
   late final GoRouter _router;
@@ -55,7 +55,7 @@ class _IbuRujukAppState extends State<IbuRujukApp> {
         ChangeNotifierProvider.value(value: _referralState),
       ],
       child: MaterialApp.router(
-        title: 'IbuRujuk',
+        title: 'RawatBunda',
         theme: AppTheme.light,
         routerConfig: _router,
       ),

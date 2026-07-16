@@ -12,5 +12,5 @@ Future<void> main() async {
       publishableKey: Env.supabaseKey,
     );
   }
-  runApp(const IbuRujukApp());
+  runApp(const RawatBundaApp());
 }

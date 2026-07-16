@@ -18,6 +18,7 @@ class FacilityMatchScreen extends StatefulWidget {
 class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
   bool _ponekOnly = false;
   Facility? _selected;
+  bool _sending = false;
   late final Future<List<Facility>> _facilitiesFuture;
 
   @override
@@ -35,14 +36,18 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Facility Match', style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 8),
+          Text('Pilih Fasilitas Kesehatan',
+              style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 4),
           Text(
-            'Referring: ${referralState.referral.patientName.isEmpty ? '(unnamed patient)' : referralState.referral.patientName}',
+            'Merujuk: ${referralState.referral.patientName.isEmpty ? '(tanpa nama)' : referralState.referral.patientName}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
           const SizedBox(height: 12),
           FilterChip(
-            label: const Text('PONEK / pre-eclampsia capable only'),
+            label: const Text('Hanya faskes mampu PONEK'),
             selected: _ponekOnly,
             onSelected: (v) => setState(() => _ponekOnly = v),
           ),
@@ -52,7 +57,7 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
               future: _facilitiesFuture,
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Text('Could not load facilities: ${snapshot.error}');
+                  return Text('Gagal memuat daftar faskes: ${snapshot.error}');
                 }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
@@ -72,14 +77,15 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
                       child: ListTile(
                         enabled: !isFull,
                         selected: isSelected,
-                        title: Text(facility.name),
+                        title: Text(facility.name,
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: Text(
                           '${facility.distanceKm} km · '
-                          '${facility.hasPonek ? 'PONEK capable' : 'No PONEK'} · '
-                          '${isFull ? 'Full' : 'Available'}',
+                          '${facility.hasPonek ? 'Mampu PONEK' : 'Non-PONEK'} · '
+                          '${isFull ? 'Penuh' : 'Tersedia'}',
                         ),
                         trailing: isFull
-                            ? const Chip(label: Text('Full'))
+                            ? const Chip(label: Text('Penuh'))
                             : (isSelected ? const Icon(Icons.check_circle) : null),
                         onTap: isFull ? null : () => setState(() => _selected = facility),
                       ),
@@ -90,16 +96,21 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          FilledButton(
-            onPressed: _selected == null
-                ? null
-                : () async {
-                    await referralState.sendReferral(_selected!);
-                    if (context.mounted) context.go('/receiving');
-                  },
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-              child: Text('Send to Selected Facility'),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              icon: const Icon(Icons.send),
+              onPressed: (_selected == null || _sending)
+                  ? null
+                  : () async {
+                      setState(() => _sending = true);
+                      await referralState.sendReferral(_selected!);
+                      if (context.mounted) context.go('/receiving');
+                    },
+              label: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(_sending ? 'Mengirim…' : 'Kirim ke Faskes Terpilih'),
+              ),
             ),
           ),
         ],

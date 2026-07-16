@@ -51,7 +51,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('IbuRujuk — Login')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
@@ -61,8 +60,26 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.local_hospital_outlined, size: 48),
-                const SizedBox(height: 16),
+                Icon(Icons.volunteer_activism,
+                    size: 56, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(height: 12),
+                Text(
+                  'RawatBunda',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Koordinasi rujukan darurat ibu hamil',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 24),
                 TextField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -72,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextField(
                   controller: _passwordController,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
+                  decoration: const InputDecoration(labelText: 'Kata sandi'),
                   onSubmitted: (_) => _signIn(),
                 ),
                 if (_error != null) ...[
@@ -84,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: _busy ? null : _signIn,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(_busy ? 'Signing in…' : 'Sign in'),
+                    child: Text(_busy ? 'Masuk…' : 'Masuk'),
                   ),
                 ),
               ],

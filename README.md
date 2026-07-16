@@ -1,4 +1,4 @@
-# IbuRujuk (Flutter)
+# RawatBunda (Flutter)
 
 Offline-first maternal emergency referral coordinator — hackathon build.
 See `IBURUJUK_PRD.md` for the full product vision. The demo scope is the
