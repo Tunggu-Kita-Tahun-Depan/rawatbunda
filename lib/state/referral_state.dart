@@ -1,13 +1,37 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/facility.dart';
 import '../models/referral.dart';
+import '../repositories/facility_repository.dart';
+import '../repositories/referral_repository.dart';
 
-/// In-memory app state (hackathon scope — no backend/database yet).
-/// When a backend is added later, this class stays the UI-facing API and
-/// delegates to a repository layer instead of mutating the case directly.
+/// UI-facing referral state. All persistence goes through the repository,
+/// so the UI works identically in in-memory and Supabase modes.
 class ReferralState extends ChangeNotifier {
-  final ReferralCase referral = ReferralCase();
+  ReferralState({
+    required ReferralRepository referralRepository,
+    required FacilityRepository facilityRepository,
+  })  : _referrals = referralRepository,
+        _facilities = facilityRepository {
+    // Live updates from other devices (or echoes of our own saves).
+    _sub = _referrals.watchActiveReferral().listen((remote) {
+      // Ignore updates for a different case than the one we hold locally
+      // (e.g. the old case arriving after a reset).
+      if (referral.id != null && remote.id != referral.id) return;
+      referral = remote;
+      notifyListeners();
+    });
+  }
+
+  final ReferralRepository _referrals;
+  final FacilityRepository _facilities;
+  StreamSubscription<ReferralCase>? _sub;
+
+  ReferralCase referral = ReferralCase();
+
+  Future<List<Facility>> getFacilities() => _facilities.getFacilities();
 
   void updateIntake({
     required String patientName,
@@ -28,47 +52,51 @@ class ReferralState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void sendReferral(Facility facility) {
+  Future<void> sendReferral(Facility facility) async {
     referral.selectedFacility = facility;
     referral.step = ReferralStep.sent;
     referral.sentAt = DateTime.now();
     notifyListeners();
-  }
-
-  void acknowledge() {
-    if (referral.step == ReferralStep.sent) {
-      referral.step = ReferralStep.acknowledged;
-      notifyListeners();
-    }
-  }
-
-  void accept() {
-    referral.step = ReferralStep.accepted;
+    referral = await _referrals.save(referral);
     notifyListeners();
   }
 
-  void decline() {
+  Future<void> acknowledge() async {
+    if (referral.step != ReferralStep.sent) return;
+    referral.step = ReferralStep.acknowledged;
+    notifyListeners();
+    await _referrals.save(referral);
+  }
+
+  Future<void> accept() async {
+    referral.step = ReferralStep.accepted;
+    notifyListeners();
+    await _referrals.save(referral);
+  }
+
+  Future<void> decline() async {
     referral.step = ReferralStep.sent;
     referral.selectedFacility = null;
     notifyListeners();
+    await _referrals.save(referral);
   }
 
-  void markArrived() {
+  Future<void> markArrived() async {
     referral.step = ReferralStep.arrived;
     notifyListeners();
+    await _referrals.save(referral);
   }
 
+  /// Start a fresh local draft (the completed case stays in the backend).
   void reset() {
-    referral.patientName = '';
-    referral.gestationalAgeWeeks = null;
-    referral.systolic = null;
-    referral.diastolic = null;
-    referral.hasSevereHeadache = false;
-    referral.hasVisualDisturbance = false;
-    referral.urgency = Urgency.routine;
-    referral.selectedFacility = null;
-    referral.step = ReferralStep.draft;
-    referral.sentAt = null;
+    referral = ReferralCase();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    _referrals.dispose();
+    super.dispose();
   }
 }

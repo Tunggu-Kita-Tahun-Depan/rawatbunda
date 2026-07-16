@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../../state/auth_state.dart';
 
 const _screenTitles = ['Intake', 'Facility Match', 'Receiving Facility', 'Timeline'];
 
@@ -13,9 +16,19 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AppAuthState>();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('IbuRujuk — Demo Referral Coordinator'),
+        actions: [
+          if (auth.authEnabled)
+            IconButton(
+              tooltip: 'Sign out${auth.userEmail != null ? ' (${auth.userEmail})' : ''}',
+              icon: const Icon(Icons.logout),
+              onPressed: () => auth.signOut(),
+            ),
+        ],
       ),
       body: Column(
         children: [
