@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
-import '../../state/auth_state.dart';
+import '../../core/theme/app_theme.dart';
 
-const _screenTitles = ['Input Data', 'Pilih Faskes', 'Faskes Penerima', 'Linimasa'];
-
-/// App scaffold wrapping the 4 demo screens with a step navigator.
-/// Uses StatefulShellRoute branches so each screen keeps its state
-/// (e.g. half-filled intake form) while switching between steps.
+/// Primary navigation for the bidan-facing prototype.
+///
+/// Referral steps live inside one tab so the bottom navigation stays simple
+/// and the workflow itself remains guided rather than acting like four
+/// unrelated app sections.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -16,71 +15,69 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AppAuthState>();
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Icon(Icons.volunteer_activism, color: colorScheme.primary),
-            const SizedBox(width: 8),
-            const Text('RawatBunda', style: TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      body: SafeArea(
+        bottom: false,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: navigationShell,
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: Center(
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: DecoratedBox(
               decoration: BoxDecoration(
-                color: colorScheme.tertiaryContainer,
-                borderRadius: BorderRadius.circular(6),
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppTheme.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primary.withValues(alpha: 0.12),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-              child: Text(
-                'DATA SIMULASI',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                  color: colorScheme.onTertiaryContainer,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: NavigationBar(
+                  selectedIndex: navigationShell.currentIndex,
+                  onDestinationSelected: (index) {
+                    navigationShell.goBranch(
+                      index,
+                      initialLocation: index == navigationShell.currentIndex,
+                    );
+                  },
+                  destinations: const [
+                    NavigationDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home_rounded),
+                      label: 'Beranda',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.sync_alt_rounded),
+                      selectedIcon: Icon(Icons.sync_alt_rounded),
+                      label: 'Rujukan',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.person_outline_rounded),
+                      selectedIcon: Icon(Icons.person_rounded),
+                      label: 'Profil',
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
         ),
-        actions: [
-          if (auth.authEnabled)
-            IconButton(
-              tooltip: 'Keluar${auth.userEmail != null ? ' (${auth.userEmail})' : ''}',
-              icon: const Icon(Icons.logout),
-              onPressed: () => auth.signOut(),
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                for (var i = 0; i < _screenTitles.length; i++)
-                  ChoiceChip(
-                    label: Text('${i + 1}. ${_screenTitles[i]}'),
-                    selected: navigationShell.currentIndex == i,
-                    onSelected: (_) => navigationShell.goBranch(i),
-                  ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
-                child: navigationShell,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
