@@ -69,6 +69,19 @@ The UI never talks to Supabase directly — only through the repositories.
 That's what makes the two modes interchangeable, and it's where a future
 offline queue (PRD FR-018) or FHIR adapter (FR-022) would plug in.
 
+## UI and navigation
+
+The mobile-browser interface uses three primary destinations:
+
+- **Beranda** for the current referral and demo shortcuts.
+- **Rujukan** for the guided four-step referral flow.
+- **Profil** for account, connection mode, safety limits, and sign-out.
+
+The blue/white/lime visual system is defined centrally in
+`lib/core/theme/app_theme.dart`. Red remains reserved for clinical danger,
+failures, and destructive actions. See `UI_UX_IMPLEMENTATION_PLAN.md` for the
+implementation scope and verification checklist.
+
 ## Project structure
 
 ```
