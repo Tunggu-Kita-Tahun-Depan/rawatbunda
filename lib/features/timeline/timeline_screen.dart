@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../models/referral.dart';
+import '../../shared/widgets/rawat_bunda_components.dart';
 import '../../state/referral_state.dart';
 
 const _steps = [
@@ -16,15 +18,13 @@ const _steps = [
 ];
 
 const _stepLabels = {
-  ReferralStep.draft: 'Draf',
-  ReferralStep.sent: 'Terkirim',
-  ReferralStep.acknowledged: 'Dikonfirmasi',
-  ReferralStep.accepted: 'Diterima',
-  ReferralStep.arrived: 'Tiba',
+  ReferralStep.draft: 'Data rujukan disiapkan',
+  ReferralStep.sent: 'Rujukan dikirim',
+  ReferralStep.acknowledged: 'Faskes meninjau',
+  ReferralStep.accepted: 'Rujukan diterima',
+  ReferralStep.arrived: 'Pasien tiba',
 };
 
-/// Screen 4 — Referral status timeline with live elapsed-time counter
-/// (maps to the PRD's primary metric: time from decision to acceptance).
 class TimelineScreen extends StatefulWidget {
   const TimelineScreen({super.key});
 
@@ -49,11 +49,11 @@ class _TimelineScreenState extends State<TimelineScreen> {
     super.dispose();
   }
 
-  String _formatElapsed(Duration d) {
-    final h = d.inHours;
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return h > 0 ? '$h:$m:$s' : '$m:$s';
+  String _formatElapsed(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
   }
 
   @override
@@ -61,83 +61,74 @@ class _TimelineScreenState extends State<TimelineScreen> {
     final referralState = context.watch<ReferralState>();
     final referral = referralState.referral;
     final currentIndex = _steps.indexOf(referral.step);
-    final colorScheme = Theme.of(context).colorScheme;
+    final elapsed = referral.sentAt == null
+        ? Duration.zero
+        : DateTime.now().difference(referral.sentAt!);
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Linimasa Rujukan', style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              for (var i = 0; i < _steps.length; i++) ...[
-                Expanded(
-                  child: Column(
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: i <= currentIndex
-                            ? colorScheme.primary
-                            : colorScheme.surfaceContainerHighest,
-                        child: i < currentIndex
-                            ? Icon(Icons.check, size: 18, color: colorScheme.onPrimary)
-                            : Text(
-                                '${i + 1}',
-                                style: TextStyle(
-                                  color: i <= currentIndex
-                                      ? colorScheme.onPrimary
-                                      : colorScheme.outline,
-                                ),
-                              ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _stepLabels[_steps[i]]!,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: i == currentIndex ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (i != _steps.length - 1)
-                  Expanded(
-                    child: Container(
-                      height: 2,
-                      color: i < currentIndex
-                          ? colorScheme.primary
-                          : colorScheme.surfaceContainerHighest,
-                    ),
-                  ),
-              ],
-            ],
+          ReferralProgressHeader(
+            currentStep: 4,
+            title: 'Linimasa Rujukan',
+            subtitle:
+                'Lihat status terbaru dan tindakan yang masih diperlukan.',
+            onBack: () => context.go('/referral/receiving'),
           ),
-          const SizedBox(height: 24),
-          if (referral.sentAt != null && referral.step != ReferralStep.arrived)
+          const SizedBox(height: 22),
+          _TimelineHero(referral: referral, elapsed: _formatElapsed(elapsed)),
+          const SizedBox(height: 14),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              child: Column(
+                children: [
+                  for (var index = 0; index < _steps.length; index++)
+                    _TimelineEventRow(
+                      label: _stepLabels[_steps[index]]!,
+                      isReached: index <= currentIndex,
+                      isCurrent: index == currentIndex,
+                      showConnector: index != _steps.length - 1,
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (referral.selectedFacility != null) ...[
+            const SizedBox(height: 14),
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 child: Row(
                   children: [
-                    Icon(Icons.timer_outlined, color: colorScheme.primary),
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primarySoft,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: const Icon(
+                        Icons.local_hospital_rounded,
+                        color: AppTheme.primaryDark,
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Waktu sejak rujukan dikirim',
-                              style: Theme.of(context).textTheme.bodySmall),
                           Text(
-                            _formatElapsed(DateTime.now().difference(referral.sentAt!)),
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontFeatures: const [FontFeature.tabularFigures()],
-                                  color: colorScheme.primary,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            'Faskes tujuan',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppTheme.mutedInk),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            referral.selectedFacility!.name,
+                            style: Theme.of(context).textTheme.titleSmall,
                           ),
                         ],
                       ),
@@ -146,55 +137,175 @@ class _TimelineScreenState extends State<TimelineScreen> {
                 ),
               ),
             ),
-          if (referral.step == ReferralStep.arrived)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle, color: Colors.green.shade700),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Pasien telah tiba di faskes tujuan. Rujukan selesai.',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
-          if (referral.selectedFacility != null)
-            Text('Tujuan: ${referral.selectedFacility!.name}'),
-          const Spacer(),
+          ],
+          const SizedBox(height: 20),
           if (referral.step == ReferralStep.accepted)
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
                 icon: const Icon(Icons.local_shipping_outlined),
-                onPressed: () => referralState.markArrived(),
-                label: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Text('Simulasikan Tiba'),
-                ),
+                onPressed: referralState.markArrived,
+                label: const Text('Simulasikan Tiba'),
               ),
             ),
           if (referral.step == ReferralStep.arrived)
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                icon: const Icon(Icons.add),
+                icon: const Icon(Icons.add_rounded),
                 onPressed: () {
                   referralState.reset();
-                  context.go('/intake');
+                  context.go('/referral/intake');
                 },
-                label: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Text('Mulai Rujukan Baru'),
-                ),
+                label: const Text('Mulai Rujukan Baru'),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineHero extends StatelessWidget {
+  const _TimelineHero({required this.referral, required this.elapsed});
+
+  final ReferralCase referral;
+  final String elapsed;
+
+  @override
+  Widget build(BuildContext context) {
+    final complete = referral.step == ReferralStep.arrived;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: AppTheme.primary,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          StatusPill(
+            label: complete ? 'RUJUKAN SELESAI' : 'RUJUKAN AKTIF',
+            backgroundColor: complete
+                ? const Color(0xFFE8F7EF)
+                : AppTheme.accentLime,
+            foregroundColor: complete ? AppTheme.success : AppTheme.ink,
+            icon: complete
+                ? Icons.check_circle_outline_rounded
+                : Icons.sync_rounded,
+          ),
+          const SizedBox(height: 24),
+          Text(
+            complete ? 'Pasien telah tiba' : 'Waktu sejak dikirim',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Semantics(
+            label: 'Waktu sejak rujukan dikirim $elapsed',
+            liveRegion: true,
+            child: Text(
+              elapsed,
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                color: Colors.white,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            referral.patientName.isEmpty
+                ? 'Pasien tanpa nama'
+                : referral.patientName,
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineEventRow extends StatelessWidget {
+  const _TimelineEventRow({
+    required this.label,
+    required this.isReached,
+    required this.isCurrent,
+    required this.showConnector,
+  });
+
+  final String label;
+  final bool isReached;
+  final bool isCurrent;
+  final bool showConnector;
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 30,
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: isReached ? AppTheme.primary : AppTheme.canvas,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isReached ? AppTheme.primary : AppTheme.border,
+                    ),
+                  ),
+                  child: Icon(
+                    isReached ? Icons.check_rounded : Icons.circle_outlined,
+                    size: 14,
+                    color: isReached ? Colors.white : AppTheme.mutedInk,
+                  ),
+                ),
+                if (showConnector)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: isReached ? AppTheme.primarySoft : AppTheme.border,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 17),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: isCurrent
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: isReached ? AppTheme.ink : AppTheme.mutedInk,
+                      ),
+                    ),
+                  ),
+                  if (isCurrent)
+                    const StatusPill(
+                      label: 'Saat ini',
+                      backgroundColor: AppTheme.primarySoft,
+                      foregroundColor: AppTheme.primaryDark,
+                    ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
