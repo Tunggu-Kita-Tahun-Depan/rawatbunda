@@ -6,8 +6,10 @@ import 'core/config/env.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'repositories/facility_repository.dart';
+import 'repositories/patient_repository.dart';
 import 'repositories/referral_repository.dart';
 import 'state/auth_state.dart';
+import 'state/patient_state.dart';
 import 'state/referral_state.dart';
 
 class RawatBundaApp extends StatefulWidget {
@@ -24,6 +26,7 @@ class RawatBundaApp extends StatefulWidget {
 class _RawatBundaAppState extends State<RawatBundaApp> {
   late final AppAuthState _auth;
   late final ReferralState _referralState;
+  late final PatientState _patientState;
   late final GoRouter _router;
 
   @override
@@ -37,6 +40,9 @@ class _RawatBundaAppState extends State<RawatBundaApp> {
       facilityRepository:
           supabase ? SupabaseFacilityRepository() : InMemoryFacilityRepository(),
     );
+    // Patients are in-memory in both modes for now; a Supabase-backed
+    // repository can swap in here without touching any screen.
+    _patientState = PatientState(repository: InMemoryPatientRepository());
     _router = createRouter(_auth);
   }
 
@@ -53,6 +59,7 @@ class _RawatBundaAppState extends State<RawatBundaApp> {
       providers: [
         ChangeNotifierProvider.value(value: _auth),
         ChangeNotifierProvider.value(value: _referralState),
+        ChangeNotifierProvider.value(value: _patientState),
       ],
       child: MaterialApp.router(
         title: 'RawatBunda',

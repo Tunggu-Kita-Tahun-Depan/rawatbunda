@@ -5,6 +5,9 @@ import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/facility_match/facility_match_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/intake/intake_screen.dart';
+import '../../features/patients/add_patient_screen.dart';
+import '../../features/patients/patient_directory_screen.dart';
+import '../../features/patients/patient_overview_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/receiving/receiving_facility_screen.dart';
 import '../../features/shell/app_shell.dart';
@@ -29,6 +32,26 @@ GoRouter createRouter(AppAuthState auth) => GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/patients',
+              builder: (_, _) => const PatientDirectoryScreen(),
+              routes: [
+                GoRoute(
+                  path: 'add',
+                  builder: (_, _) => const AddPatientScreen(),
+                ),
+                GoRoute(
+                  path: ':id',
+                  builder: (_, state) => PatientOverviewScreen(
+                    patientId: state.pathParameters['id']!,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
         StatefulShellBranch(

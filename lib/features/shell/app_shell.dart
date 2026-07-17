@@ -63,6 +63,11 @@ class AppShell extends StatelessWidget {
                       label: 'Beranda',
                     ),
                     NavigationDestination(
+                      icon: Icon(Icons.groups_outlined),
+                      selectedIcon: Icon(Icons.groups_rounded),
+                      label: 'Pasien',
+                    ),
+                    NavigationDestination(
                       icon: Icon(Icons.sync_alt_rounded),
                       selectedIcon: Icon(Icons.sync_alt_rounded),
                       label: 'Rujukan',
