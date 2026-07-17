@@ -56,7 +56,7 @@ class _RawatBundaAppState extends State<RawatBundaApp> {
     // repository can swap in here without touching any screen.
     _patientState = PatientState(InMemoryPatientRepository());
     _documentationState = DocumentationState(InMemoryDocumentRepository());
-    _router = createRouter(_auth);
+    _router = createRouter(_auth, referralState: _referralState);
   }
 
   @override

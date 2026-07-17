@@ -9,7 +9,12 @@ Future<void> pumpApp(WidgetTester tester) async {
 
 Future<void> openDirectory(WidgetTester tester) async {
   await pumpApp(tester);
-  await tester.tap(find.text('Pasien'));
+  await tester.tap(
+    find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text('Pasien'),
+    ),
+  );
   await tester.pumpAndSettle();
 }
 

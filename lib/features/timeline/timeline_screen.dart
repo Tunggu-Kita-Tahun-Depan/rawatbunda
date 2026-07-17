@@ -80,7 +80,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
             title: 'Linimasa Rujukan',
             subtitle:
                 'Lihat status terbaru dan tindakan yang masih diperlukan.',
-            onBack: () => context.go('/referral/receiving'),
+            onBack: () => context.go('/bidan/home'),
           ),
           const SizedBox(height: 22),
           _TimelineHero(referral: referral, elapsed: _formatElapsed(elapsed)),
@@ -153,7 +153,10 @@ class _TimelineScreenState extends State<TimelineScreen> {
               width: double.infinity,
               child: FilledButton.icon(
                 icon: const Icon(Icons.local_shipping_outlined),
-                onPressed: referralState.markArrived,
+                onPressed: () async {
+                  await referralState.markArrived();
+                  if (context.mounted) context.go('/bidan/home');
+                },
                 label: const Text('Simulasikan Tiba'),
               ),
             ),
@@ -164,7 +167,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                 icon: const Icon(Icons.add_rounded),
                 onPressed: () {
                   referralState.reset();
-                  context.go('/referral/intake');
+                  context.go('/bidan/patients');
                 },
                 label: const Text('Mulai Rujukan Baru'),
               ),
@@ -307,70 +310,65 @@ class _TimelineEventRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 30,
-            child: Column(
-              children: [
-                const SizedBox(height: 16),
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: isReached ? AppTheme.primary : AppTheme.canvas,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isReached ? AppTheme.primary : AppTheme.border,
-                    ),
-                  ),
-                  child: Icon(
-                    isReached ? Icons.check_rounded : Icons.circle_outlined,
-                    size: 14,
-                    color: isReached ? Colors.white : AppTheme.mutedInk,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 30,
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: isReached ? AppTheme.primary : AppTheme.canvas,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isReached ? AppTheme.primary : AppTheme.border,
                   ),
                 ),
-                if (showConnector)
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: isReached ? AppTheme.primarySoft : AppTheme.border,
+                child: Icon(
+                  isReached ? Icons.check_rounded : Icons.circle_outlined,
+                  size: 14,
+                  color: isReached ? Colors.white : AppTheme.mutedInk,
+                ),
+              ),
+              if (showConnector)
+                Container(
+                  width: 2,
+                  height: 42,
+                  color: isReached ? AppTheme.primarySoft : AppTheme.border,
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 17),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                      color: isReached ? AppTheme.ink : AppTheme.mutedInk,
                     ),
+                  ),
+                ),
+                if (isCurrent)
+                  const StatusPill(
+                    label: 'Saat ini',
+                    backgroundColor: AppTheme.primarySoft,
+                    foregroundColor: AppTheme.primaryDark,
                   ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 17),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: isCurrent
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: isReached ? AppTheme.ink : AppTheme.mutedInk,
-                      ),
-                    ),
-                  ),
-                  if (isCurrent)
-                    const StatusPill(
-                      label: 'Saat ini',
-                      backgroundColor: AppTheme.primarySoft,
-                      foregroundColor: AppTheme.primaryDark,
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

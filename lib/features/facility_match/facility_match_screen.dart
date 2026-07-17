@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 
 import '../../core/theme/app_theme.dart';
 import '../../models/facility.dart';
@@ -28,6 +29,36 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
     _facilitiesFuture = context.read<ReferralState>().getFacilities();
   }
 
+  Future<void> _submitSelection(ReferralState referralState) async {
+    final facility = _selected;
+    if (facility == null || _sending) return;
+
+    setState(() => _sending = true);
+    try {
+      await referralState
+          .sendReferral(facility)
+          .timeout(const Duration(seconds: 8));
+      if (!mounted) return;
+      context.go('/bidan/referral/response');
+    } on TimeoutException {
+      if (!mounted) return;
+      setState(() => _sending = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Koneksi lambat. Coba lagi, atau lanjutkan lewat jalur komunikasi langsung.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _sending = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menyiapkan rujukan: $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final referralState = context.watch<ReferralState>();
@@ -44,7 +75,7 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
             currentStep: 2,
             title: 'Pilih Fasilitas',
             subtitle: 'Kapabilitas wajib diperiksa sebelum jarak perjalanan.',
-            onBack: () => context.go('/referral/intake'),
+            onBack: () => context.go('/bidan/patients'),
           ),
           const SizedBox(height: 16),
           _ReferralSummary(referral: referral),
@@ -133,11 +164,7 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
               icon: const Icon(Icons.phone_forwarded_rounded),
               onPressed: (_selected == null || _sending)
                   ? null
-                  : () async {
-                      setState(() => _sending = true);
-                      await referralState.sendReferral(_selected!);
-                      if (context.mounted) context.go('/referral/receiving');
-                    },
+                  : () => _submitSelection(referralState),
               label: Text(
                 _sending ? 'Menyiapkan…' : 'Pilih & Catat Respons Faskes',
               ),
@@ -267,27 +294,20 @@ class _FacilityCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              facility.name,
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(
-                                    color: isFull
-                                        ? AppTheme.mutedInk
-                                        : AppTheme.ink,
-                                  ),
-                            ),
-                          ),
-                          if (isNearest)
-                            const StatusPill(
-                              label: 'Terdekat yang memenuhi',
-                              backgroundColor: AppTheme.accentLime,
-                              foregroundColor: AppTheme.ink,
-                            ),
-                        ],
+                      Text(
+                        facility.name,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: isFull ? AppTheme.mutedInk : AppTheme.ink,
+                        ),
                       ),
+                      if (isNearest) ...[
+                        const SizedBox(height: 8),
+                        const StatusPill(
+                          label: 'Terdekat yang memenuhi',
+                          backgroundColor: AppTheme.accentLime,
+                          foregroundColor: AppTheme.ink,
+                        ),
+                      ],
                       const SizedBox(height: 9),
                       Wrap(
                         spacing: 7,
