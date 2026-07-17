@@ -25,6 +25,7 @@ from iburujuk_ml.response_validation import (
     BackendResponseValidationError,
     validate_prediction_response,
 )
+from iburujuk_ml.stt import SttExtraction
 
 
 TOKEN = "backend-test-token"
@@ -70,6 +71,16 @@ class ProtectedBackendTests(unittest.TestCase):
     def post(self, client: TestClient, payload: dict, *, token: str = TOKEN):
         return client.post(
             "/v1/assessments/evaluate",
+            content=json.dumps(payload).encode("utf-8"),
+            headers={
+                "content-type": "application/json",
+                "authorization": f"Bearer {token}",
+            },
+        )
+
+    def confirm(self, client: TestClient, payload: dict, *, token: str = TOKEN):
+        return client.post(
+            "/v1/assessments/confirm",
             content=json.dumps(payload).encode("utf-8"),
             headers={
                 "content-type": "application/json",
@@ -195,6 +206,124 @@ class ProtectedBackendTests(unittest.TestCase):
                 request_id=request_id,
                 record_id=record_id,
             )
+
+    def test_confirmed_assessment_writes_prediction_and_operational_priority(self) -> None:
+        confirmed = {
+            **copy.deepcopy(self.example),
+            "stt_draft_id": None,
+            "bidan_confirmed": True,
+            "clinical_context": {
+                "weight_kg": 65.0,
+                "height_cm": 158.0,
+                "severe_headache": True,
+                "visual_disturbance": False,
+                "urine_protein": "positive",
+                "notes": "Diperiksa ulang oleh bidan",
+            },
+            "soap_note": {
+                "subjective": "Sakit kepala berat",
+                "objective": "TD 164/112 mmHg",
+                "assessment": "Perlu evaluasi segera",
+                "plan": "Koordinasi rujukan",
+            },
+        }
+        with TestClient(self.application) as client:
+            response = self.confirm(client, confirmed)
+            replay = self.confirm(client, confirmed)
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["status"], "stored")
+        self.assertEqual(payload["prediction"]["status"], "ok")
+        self.assertTrue(payload["operational_priority_applied"])
+        self.assertEqual(payload["priority"]["final_band"], "darurat")
+        self.assertTrue(payload["database_source_of_truth"])
+        self.assertEqual(replay.status_code, 200)
+        self.assertTrue(replay.json()["idempotent_replay"])
+
+    def test_manual_bidan_confirmation_is_required(self) -> None:
+        confirmed = {
+            **copy.deepcopy(self.example),
+            "stt_draft_id": None,
+            "bidan_confirmed": False,
+            "clinical_context": {},
+            "soap_note": {},
+        }
+        with TestClient(self.application) as client:
+            response = self.confirm(client, confirmed)
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["errors"][0]["code"], "confirmation_required")
+
+    def test_stt_creates_unconfirmed_draft_without_retaining_audio(self) -> None:
+        class FakeStt:
+            def transcribe_and_extract(self, **kwargs):
+                self.audio = kwargs["audio"]
+                return SttExtraction(
+                    transcript="Tekanan darah seratus enam puluh empat per seratus dua belas",
+                    model_input={
+                        "systolic_bp_mmhg": 164,
+                        "diastolic_bp_mmhg": 112,
+                    },
+                    clinical_context={"severe_headache": True},
+                    soap_note={
+                        "subjective": "Sakit kepala",
+                        "objective": "TD 164/112",
+                        "assessment": "Perlu evaluasi",
+                        "plan": "Periksa ulang",
+                    },
+                    warnings=["Periksa dan lengkapi field lain"],
+                    generated_at="2026-07-17T10:00:00+00:00",
+                )
+
+        fake = FakeStt()
+        app = create_app(
+            runtime=self.runtime,
+            store=InMemoryPredictionStore(),
+            auth_verifier=self.auth,
+            stt_service=fake,
+        )
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/stt/drafts",
+                params={
+                    "patient_id": self.example["patient_id"],
+                    "pregnancy_episode_id": self.example["pregnancy_episode_id"],
+                },
+                content=b"RIFF-test-audio",
+                headers={
+                    "content-type": "audio/wav",
+                    "authorization": f"Bearer {TOKEN}",
+                },
+            )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["status"], "pending_bidan_review")
+        self.assertTrue(payload["requires_bidan_confirmation"])
+        self.assertFalse(payload["audio_retained"])
+        self.assertEqual(fake.audio, b"RIFF-test-audio")
+
+    def test_patient_creation_is_a_protected_backend_write(self) -> None:
+        request = {
+            "schema_version": "1.0",
+            "display_name": "Pasien Sintetis",
+            "age_years": 28,
+            "gestational_age_weeks": 30,
+            "gravida": 2,
+            "para": 1,
+            "abortus": 0,
+        }
+        with TestClient(self.application) as client:
+            response = client.post(
+                "/v1/patients",
+                content=json.dumps(request).encode("utf-8"),
+                headers={
+                    "content-type": "application/json",
+                    "authorization": f"Bearer {TOKEN}",
+                },
+            )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["status"], "stored")
 
 
 if __name__ == "__main__":

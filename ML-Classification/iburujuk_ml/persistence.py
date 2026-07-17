@@ -12,6 +12,8 @@ from urllib.request import Request, urlopen
 from uuid import uuid4
 
 from .backend_contracts import EvaluationRequest
+from .clinical_contracts import ConfirmationRequest, PatientCreateRequest
+from .stt import SttExtraction
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,29 @@ class JobClaim:
 class StoredPrediction:
     job_id: str
     prediction_id: str
+
+
+@dataclass(frozen=True)
+class StoredSttDraft:
+    draft_id: str
+    created_at: str
+
+
+@dataclass(frozen=True)
+class StoredPriority:
+    priority_snapshot_id: str
+    final_band: str
+    needs_verification: bool
+    reasons: list[str]
+    missing_inputs: list[str]
+    generated_at: str
+    idempotent_replay: bool = False
+
+
+@dataclass(frozen=True)
+class CreatedPatient:
+    patient_id: str
+    pregnancy_episode_id: str
 
 
 class PersistenceError(RuntimeError):
@@ -47,6 +72,31 @@ class PatientAccessDenied(PersistenceError):
 
 
 class PredictionStore(Protocol):
+    def assert_access(
+        self,
+        *,
+        patient_id: str,
+        pregnancy_episode_id: str,
+        actor_id: str,
+    ) -> None: ...
+
+    def create_patient(
+        self,
+        request: PatientCreateRequest,
+        *,
+        actor_id: str,
+    ) -> CreatedPatient: ...
+
+    def create_stt_draft(
+        self,
+        *,
+        patient_id: str,
+        pregnancy_episode_id: str,
+        actor_id: str,
+        extraction: SttExtraction,
+        audio_metadata: Mapping[str, Any],
+    ) -> StoredSttDraft: ...
+
     def claim_job(
         self,
         request: EvaluationRequest,
@@ -66,6 +116,14 @@ class PredictionStore(Protocol):
 
     def fail_job(self, claim: JobClaim, *, code: str, message: str) -> None: ...
 
+    def finalize_assessment(
+        self,
+        request: ConfirmationRequest,
+        *,
+        actor_id: str,
+        prediction_id: str | None,
+    ) -> StoredPriority: ...
+
 
 class InMemoryPredictionStore:
     """Deterministic local/test store that mirrors request-id idempotency."""
@@ -73,6 +131,46 @@ class InMemoryPredictionStore:
     def __init__(self) -> None:
         self._lock = Lock()
         self._jobs: dict[str, dict[str, Any]] = {}
+        self._drafts: dict[str, dict[str, Any]] = {}
+        self._priorities: dict[str, StoredPriority] = {}
+
+    def assert_access(
+        self,
+        *,
+        patient_id: str,
+        pregnancy_episode_id: str,
+        actor_id: str,
+    ) -> None:
+        return None
+
+    def create_patient(
+        self,
+        request: PatientCreateRequest,
+        *,
+        actor_id: str,
+    ) -> CreatedPatient:
+        return CreatedPatient(str(uuid4()), str(uuid4()))
+
+    def create_stt_draft(
+        self,
+        *,
+        patient_id: str,
+        pregnancy_episode_id: str,
+        actor_id: str,
+        extraction: SttExtraction,
+        audio_metadata: Mapping[str, Any],
+    ) -> StoredSttDraft:
+        draft_id = str(uuid4())
+        created_at = extraction.generated_at
+        with self._lock:
+            self._drafts[draft_id] = {
+                "patient_id": patient_id,
+                "pregnancy_episode_id": pregnancy_episode_id,
+                "actor_id": actor_id,
+                "extraction": extraction,
+                "audio_metadata": dict(audio_metadata),
+            }
+        return StoredSttDraft(draft_id=draft_id, created_at=created_at)
 
     def claim_job(
         self,
@@ -152,6 +250,34 @@ class InMemoryPredictionStore:
             if job is not None:
                 job.update({"status": "failed", "error_code": code, "error": message})
 
+    def finalize_assessment(
+        self,
+        request: ConfirmationRequest,
+        *,
+        actor_id: str,
+        prediction_id: str | None,
+    ) -> StoredPriority:
+        with self._lock:
+            existing = self._priorities.get(request.evaluation.encounter_id)
+            if existing is not None:
+                return StoredPriority(
+                    **{
+                        **existing.__dict__,
+                        "idempotent_replay": True,
+                    }
+                )
+            priority = request.priority
+            stored = StoredPriority(
+                priority_snapshot_id=str(uuid4()),
+                final_band=priority.final_band,
+                needs_verification=priority.needs_verification,
+                reasons=list(priority.reasons),
+                missing_inputs=list(priority.missing_inputs),
+                generated_at=priority.generated_at,
+            )
+            self._priorities[request.evaluation.encounter_id] = stored
+            return stored
+
 
 class SupabasePredictionStore:
     """Call service-role-only database RPCs through Supabase PostgREST."""
@@ -222,6 +348,14 @@ class SupabasePredictionStore:
                 raise PatientAccessDenied(
                     "Authenticated bidan is not assigned to this patient"
                 ) from error
+            if "stt_draft" in detail:
+                raise EncounterCorrelationError(
+                    "STT draft does not belong to this patient encounter"
+                ) from error
+            if "prediction_encounter_mismatch" in detail:
+                raise EncounterCorrelationError(
+                    "Prediction does not belong to this encounter"
+                ) from error
             raise PersistenceError(f"Supabase RPC {name} failed with HTTP {error.code}") from error
         except (URLError, TimeoutError, OSError) as error:
             raise PersistenceError(f"Supabase RPC {name} is unavailable") from error
@@ -234,6 +368,73 @@ class SupabasePredictionStore:
         if not isinstance(parsed, dict):
             raise PersistenceError(f"Supabase RPC {name} returned an invalid object")
         return parsed
+
+    def assert_access(
+        self,
+        *,
+        patient_id: str,
+        pregnancy_episode_id: str,
+        actor_id: str,
+    ) -> None:
+        self._rpc(
+            "assert_bidan_patient_access",
+            {
+                "p_patient_id": patient_id,
+                "p_pregnancy_episode_id": pregnancy_episode_id,
+                "p_actor_id": actor_id,
+            },
+        )
+
+    def create_patient(
+        self,
+        request: PatientCreateRequest,
+        *,
+        actor_id: str,
+    ) -> CreatedPatient:
+        result = self._rpc(
+            "create_patient_with_episode",
+            {
+                "p_created_by": actor_id,
+                "p_display_name": request.display_name,
+                "p_age_years": request.age_years,
+                "p_gestational_age_weeks": request.gestational_age_weeks,
+                "p_gravida": request.gravida,
+                "p_para": request.para,
+                "p_abortus": request.abortus,
+            },
+        )
+        return CreatedPatient(
+            patient_id=str(result["patient_id"]),
+            pregnancy_episode_id=str(result["pregnancy_episode_id"]),
+        )
+
+    def create_stt_draft(
+        self,
+        *,
+        patient_id: str,
+        pregnancy_episode_id: str,
+        actor_id: str,
+        extraction: SttExtraction,
+        audio_metadata: Mapping[str, Any],
+    ) -> StoredSttDraft:
+        result = self._rpc(
+            "create_stt_draft",
+            {
+                "p_patient_id": patient_id,
+                "p_pregnancy_episode_id": pregnancy_episode_id,
+                "p_created_by": actor_id,
+                "p_transcript": extraction.transcript,
+                "p_soap_note": extraction.soap_note,
+                "p_extracted_model_input": extraction.model_input,
+                "p_extracted_clinical_context": extraction.clinical_context,
+                "p_extraction_warnings": extraction.warnings,
+                "p_audio_metadata": dict(audio_metadata),
+            },
+        )
+        return StoredSttDraft(
+            draft_id=str(result["draft_id"]),
+            created_at=str(result["created_at"]),
+        )
 
     def claim_job(
         self,
@@ -299,13 +500,46 @@ class SupabasePredictionStore:
             },
         )
 
+    def finalize_assessment(
+        self,
+        request: ConfirmationRequest,
+        *,
+        actor_id: str,
+        prediction_id: str | None,
+    ) -> StoredPriority:
+        result = self._rpc(
+            "confirm_assessment_workflow",
+            {
+                "p_encounter_id": request.evaluation.encounter_id,
+                "p_confirmed_by": actor_id,
+                "p_prediction_id": prediction_id,
+                "p_stt_draft_id": request.stt_draft_id,
+                "p_clinical_context": request.clinical_context,
+                "p_soap_note": request.soap_note,
+            },
+        )
+        return StoredPriority(
+            priority_snapshot_id=str(result["priority_snapshot_id"]),
+            final_band=str(result["final_band"]),
+            needs_verification=bool(result["needs_verification"]),
+            reasons=[str(value) for value in result.get("reasons", [])],
+            missing_inputs=[
+                str(value) for value in result.get("missing_inputs", [])
+            ],
+            generated_at=str(result["generated_at"]),
+            idempotent_replay=bool(result.get("idempotent_replay", False)),
+        )
+
 
 __all__ = [
     "InMemoryPredictionStore",
+    "CreatedPatient",
     "JobClaim",
     "PersistenceError",
     "PredictionStore",
     "RequestIdConflict",
     "StoredPrediction",
+    "StoredPriority",
+    "StoredSttDraft",
     "SupabasePredictionStore",
 ]

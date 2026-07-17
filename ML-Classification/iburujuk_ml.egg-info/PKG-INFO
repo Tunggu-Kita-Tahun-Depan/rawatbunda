@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: iburujuk-ml
-Version: 0.4.0
+Version: 0.5.0
 Summary: Fail-closed RawatBunda maternal-risk backend package
 Requires-Python: <3.15,>=3.14
 Requires-Dist: annotated-doc==0.0.4
@@ -11,6 +11,7 @@ Requires-Dist: fastapi==0.139.2
 Requires-Dist: h11==0.16.0
 Requires-Dist: idna==3.18
 Requires-Dist: joblib==1.5.2
+Requires-Dist: groq==1.5.0
 Requires-Dist: numpy==2.3.4
 Requires-Dist: pandas==3.0.2
 Requires-Dist: pydantic==2.13.4

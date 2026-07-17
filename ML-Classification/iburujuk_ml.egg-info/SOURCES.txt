@@ -6,6 +6,7 @@ iburujuk_ml/api.py
 iburujuk_ml/auth.py
 iburujuk_ml/backend.py
 iburujuk_ml/backend_contracts.py
+iburujuk_ml/clinical_contracts.py
 iburujuk_ml/contracts.py
 iburujuk_ml/data.py
 iburujuk_ml/environment.py
@@ -16,6 +17,7 @@ iburujuk_ml/persistence.py
 iburujuk_ml/policy.py
 iburujuk_ml/response_validation.py
 iburujuk_ml/robustness.py
+iburujuk_ml/stt.py
 iburujuk_ml.egg-info/PKG-INFO
 iburujuk_ml.egg-info/SOURCES.txt
 iburujuk_ml.egg-info/dependency_links.txt

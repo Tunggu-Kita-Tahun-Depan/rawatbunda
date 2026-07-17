@@ -8,22 +8,25 @@ RawatBunda's operational priority queue.
 ## Integration boundary
 
 ```text
-Flutter (future)
-  -> POST /v1/assessments/evaluate with Supabase bearer token
-  -> backend validates patient/episode access and atomically registers encounter
-  -> strict model inference
-  -> backend validates the complete model response
-  -> service-role-only Supabase RPC
-  -> ml_inference_jobs + ml_predictions
+Flutter audio
+  -> POST /v1/stt/drafts with Supabase bearer token
+  -> Groq Whisper transcription + structured SOAP/field draft
+  -> stt_drafts (pending_review; audio is not retained)
+  -> bidan reviews and corrects every field
+  -> POST /v1/assessments/confirm
+  -> encounters + encounter_clinical_details
+  -> strict ML inference -> ml_inference_jobs + ml_predictions
+  -> deterministic safety policy -> confirmed priority_snapshots
 
-Frontend worklist (future)
-  <- current_priority_snapshots view
+Flutter worklist
+  <- patients + encounters + current_priority_snapshots + latest_ml_predictions
+  <- Supabase realtime refresh
 ```
 
-The endpoint stores only the raw shadow-model prediction. It deliberately sets
-`operational_priority_applied=false` and does not create a confirmed
-`priority_snapshot`. A governed priority policy and explicit bidan confirmation
-must be implemented before the operational worklist consumes ML.
+The standalone evaluation endpoint still stores only a shadow prediction. The
+confirmation endpoint additionally stores a deterministic operational priority
+after explicit bidan data review. The experimental ML score is linked for audit
+and display but cannot lower or directly choose the operational priority band.
 
 ## Apply database migrations
 
@@ -31,10 +34,11 @@ Run these in order in the Supabase SQL editor:
 
 1. `supabase/migrations/001_init.sql`
 2. `supabase/migrations/002_ml_backend.sql`
+3. `supabase/migrations/003_clinical_workflow.sql`
 
-The second migration creates patient/encounter correlation tables, inference
-jobs, raw predictions, future priority snapshots, RLS read policies, realtime
-publication, frontend-ready views, and service-role-only atomic RPCs.
+Migration 003 adds protected STT drafts, confirmed SOAP/clinical details,
+patient creation, the confirmation workflow, deterministic priority snapshots,
+RLS, realtime publication, and service-role-only RPCs.
 
 Never place `SUPABASE_SERVICE_ROLE_KEY` in Flutter, browser code, a mobile
 build, or a checked-in environment file.
@@ -48,13 +52,14 @@ SUPABASE_URL
 SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 IBURUJUK_MODEL_SHA256
+GROQ_API_KEY
 ```
 
 `SUPABASE_ANON_KEY` is used only to verify the caller's Supabase access token.
 `SUPABASE_SERVICE_ROLE_KEY` is used only by the server to call the protected
 database RPCs. `IBURUJUK_MODEL_SHA256` is mandatory in production and must be
 pinned from the trusted release manifest rather than discovered next to the
-artifact.
+artifact. `GROQ_API_KEY` enables STT and must exist only on the backend.
 
 Install and run:
 
@@ -82,6 +87,9 @@ Authorization: Bearer local-demo-token
 - `GET /health/live`
 - `GET /health/ready`
 - `POST /v1/assessments/evaluate`
+- `POST /v1/stt/drafts?patient_id=...&pregnancy_episode_id=...`
+- `POST /v1/assessments/confirm`
+- `POST /v1/patients`
 
 The internal model-only boundary is available separately through
 `python -m iburujuk_ml.api` and exposes `POST /v1/predict`. Application clients
@@ -106,9 +114,10 @@ measurement must receive a new encounter UUID.
 ## Safety and frontend contract
 
 - `ml_predictions` is raw experimental evidence and audit data.
-- `priority_snapshots` is reserved for the governed rules + optional ML + bidan
+- `priority_snapshots` stores governed rules + linked ML evidence + bidan
   confirmation result.
-- The future frontend should read `current_priority_snapshots` for the worklist.
+- The frontend reads `current_priority_snapshots` for the worklist and never
+  sorts operationally on raw `model_score`.
 - The current PE classifier may remain visible only as an experimental shadow
   result and must not be renamed into clinical urgency.
 - Model or persistence failure must not block emergency rules or referral.
