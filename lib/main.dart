@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'core/config/env.dart';
+import 'models/app_profile.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,5 +13,6 @@ Future<void> main() async {
       publishableKey: Env.supabaseKey,
     );
   }
-  runApp(const RawatBundaApp());
+  final demoRole = AppRoleLabel.fromValue(Env.demoRole) ?? AppRole.bidan;
+  runApp(RawatBundaApp(demoRole: demoRole));
 }

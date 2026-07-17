@@ -12,17 +12,15 @@ import '../../state/referral_state.dart';
 const _steps = [
   ReferralStep.draft,
   ReferralStep.sent,
-  ReferralStep.acknowledged,
   ReferralStep.accepted,
   ReferralStep.arrived,
 ];
 
 const _stepLabels = {
   ReferralStep.draft: 'Data rujukan disiapkan',
-  ReferralStep.sent: 'Rujukan dikirim',
-  ReferralStep.acknowledged: 'Faskes meninjau',
-  ReferralStep.accepted: 'Rujukan diterima',
-  ReferralStep.arrived: 'Pasien tiba',
+  ReferralStep.sent: 'Faskes dipilih dan dihubungi',
+  ReferralStep.accepted: 'Penerimaan eksternal dicatat bidan',
+  ReferralStep.arrived: 'Pasien tiba / serah terima',
 };
 
 class TimelineScreen extends StatefulWidget {
@@ -60,7 +58,14 @@ class _TimelineScreenState extends State<TimelineScreen> {
   Widget build(BuildContext context) {
     final referralState = context.watch<ReferralState>();
     final referral = referralState.referral;
-    final currentIndex = _steps.indexOf(referral.step);
+    final currentIndex = switch (referral.step) {
+      ReferralStep.draft => 0,
+      ReferralStep.sent ||
+      ReferralStep.acknowledged ||
+      ReferralStep.declined => 1,
+      ReferralStep.accepted => 2,
+      ReferralStep.arrived => 3,
+    };
     final elapsed = referral.sentAt == null
         ? Duration.zero
         : DateTime.now().difference(referral.sentAt!);
@@ -137,6 +142,10 @@ class _TimelineScreenState extends State<TimelineScreen> {
                 ),
               ),
             ),
+          ],
+          if (referral.latestContactEvent != null) ...[
+            const SizedBox(height: 14),
+            _ResponseProvenance(event: referral.latestContactEvent!),
           ],
           const SizedBox(height: 20),
           if (referral.step == ReferralStep.accepted)
@@ -224,6 +233,60 @@ class _TimelineHero extends StatelessWidget {
             ).textTheme.titleSmall?.copyWith(color: Colors.white),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ResponseProvenance extends StatelessWidget {
+  const _ResponseProvenance({required this.event});
+
+  final FacilityContactEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.fact_check_outlined,
+                  color: AppTheme.primaryDark,
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    'Sumber status penerimaan',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                StatusPill(
+                  label: event.isSimulated ? 'SIMULASI' : 'DICATAT BIDAN',
+                  backgroundColor: event.isSimulated
+                      ? AppTheme.accentLime
+                      : AppTheme.primarySoft,
+                  foregroundColor: AppTheme.ink,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '${event.contactName} · ${event.responseSource}',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppTheme.mutedInk),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Dicatat oleh ${event.recordedBy}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
       ),
     );
   }

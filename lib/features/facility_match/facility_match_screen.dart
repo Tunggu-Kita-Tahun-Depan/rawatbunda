@@ -32,6 +32,8 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
   Widget build(BuildContext context) {
     final referralState = context.watch<ReferralState>();
     final referral = referralState.referral;
+    final requiresPonek =
+        referral.hasSafetyFlag || referral.urgency != Urgency.routine;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
@@ -41,7 +43,7 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
           ReferralProgressHeader(
             currentStep: 2,
             title: 'Pilih Fasilitas',
-            subtitle: 'Bandingkan kemampuan layanan, status, dan jarak.',
+            subtitle: 'Kapabilitas wajib diperiksa sebelum jarak perjalanan.',
             onBack: () => context.go('/referral/intake'),
           ),
           const SizedBox(height: 16),
@@ -50,11 +52,22 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
           FilterChip(
             avatar: const Icon(Icons.local_hospital_outlined, size: 18),
             label: const Text('Hanya faskes mampu PONEK'),
-            selected: _ponekOnly,
+            selected: _ponekOnly || requiresPonek,
             selectedColor: AppTheme.accentLime,
             checkmarkColor: AppTheme.ink,
-            onSelected: (value) => setState(() => _ponekOnly = value),
+            onSelected: requiresPonek
+                ? null
+                : (value) => setState(() => _ponekOnly = value),
           ),
+          if (requiresPonek) ...[
+            const SizedBox(height: 10),
+            const InfoNotice(
+              title: 'Filter kapabilitas aktif',
+              message:
+                  'Kasus ini hanya menampilkan faskes sintetis yang mampu PONEK dan berstatus tersedia. Jarak dipakai setelah filter kemampuan.',
+              icon: Icons.health_and_safety_outlined,
+            ),
+          ],
           const SizedBox(height: 12),
           Expanded(
             child: FutureBuilder<List<Facility>>(
@@ -73,9 +86,28 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
                 }
                 final facilities =
                     snapshot.data!
-                        .where((facility) => !_ponekOnly || facility.hasPonek)
+                        .where(
+                          (facility) =>
+                              facility.status == FacilityStatus.available &&
+                              (!(requiresPonek || _ponekOnly) ||
+                                  facility.hasPonek) &&
+                              !referral.declinedFacilityNames.contains(
+                                facility.name,
+                              ),
+                        )
                         .toList()
                       ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+
+                if (facilities.isEmpty) {
+                  return const Center(
+                    child: InfoNotice(
+                      title: 'Tidak ada kandidat yang memenuhi filter',
+                      message:
+                          'Gunakan jalur komunikasi dan eskalasi yang berlaku. Jangan menunggu aplikasi dalam keadaan darurat.',
+                      icon: Icons.warning_amber_rounded,
+                    ),
+                  );
+                }
 
                 return ListView.separated(
                   padding: const EdgeInsets.only(bottom: 6),
@@ -87,9 +119,7 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
                       facility: facility,
                       isNearest: index == 0,
                       isSelected: _selected == facility,
-                      onTap: facility.status == FacilityStatus.full
-                          ? null
-                          : () => setState(() => _selected = facility),
+                      onTap: () => setState(() => _selected = facility),
                     );
                   },
                 );
@@ -100,7 +130,7 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              icon: const Icon(Icons.send_rounded),
+              icon: const Icon(Icons.phone_forwarded_rounded),
               onPressed: (_selected == null || _sending)
                   ? null
                   : () async {
@@ -108,7 +138,9 @@ class _FacilityMatchScreenState extends State<FacilityMatchScreen> {
                       await referralState.sendReferral(_selected!);
                       if (context.mounted) context.go('/referral/receiving');
                     },
-              label: Text(_sending ? 'Mengirim…' : 'Kirim ke Faskes Terpilih'),
+              label: Text(
+                _sending ? 'Menyiapkan…' : 'Pilih & Catat Respons Faskes',
+              ),
             ),
           ),
         ],
@@ -250,7 +282,7 @@ class _FacilityCard extends StatelessWidget {
                           ),
                           if (isNearest)
                             const StatusPill(
-                              label: 'Terdekat',
+                              label: 'Terdekat yang memenuhi',
                               backgroundColor: AppTheme.accentLime,
                               foregroundColor: AppTheme.ink,
                             ),
@@ -262,7 +294,9 @@ class _FacilityCard extends StatelessWidget {
                         runSpacing: 7,
                         children: [
                           StatusPill(
-                            label: '${facility.distanceKm} km',
+                            label: facility.estimatedTravelMinutes == null
+                                ? '${facility.distanceKm} km'
+                                : '±${facility.estimatedTravelMinutes} menit',
                             backgroundColor: AppTheme.canvas,
                             foregroundColor: AppTheme.mutedInk,
                             icon: Icons.near_me_outlined,
@@ -271,6 +305,12 @@ class _FacilityCard extends StatelessWidget {
                             label: facility.hasPonek ? 'PONEK' : 'Non-PONEK',
                             backgroundColor: AppTheme.primarySoft,
                             foregroundColor: AppTheme.primaryDark,
+                          ),
+                          StatusPill(
+                            label: facility.statusSource,
+                            backgroundColor: AppTheme.canvas,
+                            foregroundColor: AppTheme.mutedInk,
+                            icon: Icons.info_outline_rounded,
                           ),
                           StatusPill(
                             label: isFull ? 'Penuh' : 'Tersedia',

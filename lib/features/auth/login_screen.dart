@@ -31,7 +31,8 @@ class _LoginScreenState extends State<LoginScreen> {
       _busy = true;
       _error = null;
     });
-    final error = await context.read<AppAuthState>().signIn(
+    final auth = context.read<AppAuthState>();
+    final error = await auth.signIn(
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
@@ -42,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _busy = false;
       });
     } else {
-      context.go('/home');
+      context.go(auth.homeLocation);
     }
   }
 

@@ -20,7 +20,8 @@ abstract final class ClinicalRules {
     required int? diastolic,
     required bool anyDangerSymptom,
   }) {
-    final bpFlag = (systolic ?? 0) >= severeSystolicThreshold ||
+    final bpFlag =
+        (systolic ?? 0) >= severeSystolicThreshold ||
         (diastolic ?? 0) >= severeDiastolicThreshold;
     return bpFlag && anyDangerSymptom;
   }

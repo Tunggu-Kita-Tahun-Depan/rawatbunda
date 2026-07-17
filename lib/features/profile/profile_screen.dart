@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../models/app_profile.dart';
 import '../../shared/widgets/rawat_bunda_components.dart';
 import '../../state/auth_state.dart';
 
@@ -49,7 +50,7 @@ class ProfileScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Akun demo RawatBunda',
+                          auth.profile?.displayName ?? 'Akun demo RawatBunda',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 4),
@@ -83,10 +84,10 @@ class ProfileScreen extends StatelessWidget {
                   value: auth.authEnabled ? 'Supabase demo' : 'Mode demo lokal',
                 ),
                 const Divider(height: 1, indent: 66),
-                const _ProfileRow(
+                _ProfileRow(
                   icon: Icons.badge_outlined,
                   title: 'Peran',
-                  value: 'Belum ditetapkan',
+                  value: auth.role?.label ?? 'Belum dikonfigurasi',
                 ),
                 const Divider(height: 1, indent: 66),
                 const _ProfileRow(

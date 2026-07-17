@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:tunggukitatahundepan2026/app.dart';
 import 'package:tunggukitatahundepan2026/core/constants/clinical_rules.dart';
+import 'package:tunggukitatahundepan2026/models/app_profile.dart';
 
 void main() {
-  Future<void> pumpDemoApp(WidgetTester tester) async {
-    await tester.pumpWidget(const RawatBundaApp(useSupabase: false));
+  Future<void> pumpDemoApp(
+    WidgetTester tester, {
+    AppRole role = AppRole.bidan,
+  }) async {
+    await tester.pumpWidget(RawatBundaApp(useSupabase: false, demoRole: role));
     await tester.pumpAndSettle();
   }
 
@@ -97,5 +102,33 @@ void main() {
 
     expect(find.text('Selamat datang'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Pasien role is view-only and cannot open Bidan routes', (
+    tester,
+  ) async {
+    await pumpDemoApp(tester, role: AppRole.pasien);
+
+    expect(find.text('TAMPILAN BACA-SAJA'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Rujukan'), findsNothing);
+
+    final context = tester.element(find.text('TAMPILAN BACA-SAJA'));
+    GoRouter.of(context).go('/bidan/home');
+    await tester.pumpAndSettle();
+
+    expect(find.text('TAMPILAN BACA-SAJA'), findsOneWidget);
+    expect(find.text('Buat Rujukan Baru'), findsNothing);
+  });
+
+  testWidgets('Admin role sees facilities but no clinical actions', (
+    tester,
+  ) async {
+    await pumpDemoApp(tester, role: AppRole.admin);
+
+    expect(find.text('Master Fasilitas'), findsOneWidget);
+    expect(find.text('Rujukan'), findsNothing);
+    expect(find.text('Buat Rujukan Baru'), findsNothing);
+    expect(find.byType(TextField), findsNothing);
   });
 }
