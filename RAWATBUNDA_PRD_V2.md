@@ -1,10 +1,11 @@
 # RawatBunda Product Requirements Document
 
 **Subtitle:** Bidan Workflow and Referral Coordination Copilot  
-**Version:** 2.1 — mentor-feedback pivot; three-role model (admin, bidan, pasien)  
+**Version:** 2.2 — merged: patient-first workflow, three roles, view-only pasien  
 **Status:** Hackathon MVP specification; not approved for clinical deployment  
 **Date:** 17 July 2026  
 **Primary user:** Bidan providing ANC at a Puskesmas/FKTP  
+**Authorized roles:** Bidan, Pasien, and Admin  
 **Initial pathway:** Maternal ANC workflow, with hypertensive disorders including suspected pre-eclampsia as the first safety scenario  
 **Previous specification:** `IBURUJUK_PRD.md` remains the detailed reference for the closed-loop referral subsystem
 
@@ -12,18 +13,20 @@
 
 ## 1. Executive summary
 
-RawatBunda is an offline-tolerant workflow copilot that helps a bidan manage a population of pregnant patients from one longitudinal record. It helps the bidan:
+RawatBunda is an offline-tolerant workflow copilot that helps a bidan manage pregnant patients from one longitudinal record. The operational journey starts with an explicit patient selection, not an automatically generated diagnosis or risk screen. It helps the bidan:
 
-1. See who needs attention first and why.
-2. Understand meaningful changes across visits.
-3. Document the encounter once using structured data and an AI-assisted draft.
-4. Match a referral to an appropriate facility and follow it until acceptance and handover.
+1. Search for and select an existing patient or add a new patient.
+2. Enter and verify the current encounter data.
+3. Receive an explainable, non-diagnostic workflow recommendation from a hybrid rules-and-ML engine.
+4. Confirm the next action and understand meaningful changes across visits.
+5. Document the encounter once using structured data and an AI-assisted draft.
+6. Match a referral to an appropriate facility and follow it until acceptance and handover.
 
 RawatBunda does **not** diagnose pre-eclampsia, determine treatment, or replace the bidan's professional judgement. Safety-critical urgency is governed by transparent, versioned clinical rules and clinician input. Generative AI is limited to transcription, structured extraction, summarization, and draft documents that a bidan must review and sign.
 
 ### Product promise
 
-> RawatBunda helps the bidan decide whom to see first, understand what changed, coordinate the right destination, and document once.
+> RawatBunda helps the bidan select the patient, capture the encounter once, understand the recommended priority and its reasons, document efficiently, and coordinate the right destination.
 
 ### Product category
 
@@ -38,13 +41,16 @@ RawatBunda does **not** diagnose pre-eclampsia, determine treatment, or replace 
 The MVP demonstrates one connected synthetic journey:
 
 ```text
-30-patient worklist
-  → highest-priority patient and explanation
+login as bidan
+  → patient directory
+  → select an existing patient or add a new patient
+  → current encounter data capture
+  → safety floor plus ML workflow recommendation
+  → bidan confirms or overrides the next action
   → four-visit trend
-  → new encounter capture
   → reviewed SOAP draft
   → capability-based facility match
-  → accept/decline and reroute
+  → bidan records externally confirmed accept/decline and reroutes if needed
   → referral timeline and handover
 ```
 
@@ -60,7 +66,7 @@ The four ideas are not separate products. They share one verified pregnancy reco
 
 | Mentor idea | Improved product definition | Appropriate technology |
 |---|---|---|
-| Prioritize 30 patients | Explainable operational worklist with urgency bands, reasons, due actions, and human override | Clinical rules first; optional validated ranking model later |
+| Prioritize patients after capture | Bidan selects a patient, enters the encounter, and receives an explainable operational recommendation; saved recommendations then form the worklist | Governed safety rules plus an ML recommendation that cannot lower the safety floor |
 | Recommend a hospital | Eligibility filtering followed by transparent ranking of capable facilities | Constraint optimization, not diagnosis |
 | Monitor weekly trends | Longitudinal ANC completeness and change monitoring at the clinically planned cadence | Transparent trend rules initially |
 | AI documentation | Consented speech or text to structured draft SOAP, clinical handoff, and family instructions | Speech recognition plus schema-constrained generation |
@@ -70,6 +76,17 @@ The four ideas are not separate products. They share one verified pregnancy reco
 A model trained to classify pre-eclampsia does not automatically become a patient-prioritization model when its output is renamed. A prioritization model needs a different target, such as clinician-adjudicated urgency, required assessment within a defined time, or a time-critical intervention.
 
 The current pre-eclampsia dataset and model may remain an experimental research input, but they must not control the production queue, lower urgency, or support claims that RawatBunda knows which patient is safe to wait.
+
+### Recommendation contract
+
+For the hackathon, the ML component may demonstrate a recommendation after the bidan has entered the current data. Its contract is deliberately narrow:
+
+- **Inputs:** confirmed patient/pregnancy context, current encounter values, relevant verified history, longitudinal features, missingness indicators, and timestamps.
+- **Outputs:** a proposed operational band, the main contributing factors, missing or low-quality inputs, generation time, and model version.
+- **Permitted action suggestions:** review now, review during this session, recheck an input, continue the bidan-approved monitoring plan, or open the referral workflow for bidan consideration.
+- **Prohibited outputs:** diagnosis, certainty that the patient is safe, medication, dosage, treatment, discharge, or an autonomous referral decision.
+
+The final displayed band is the maximum of the governed safety floor, the ML proposal, and any bidan-selected escalation. The bidan may accept, raise, or override the workflow recommendation with a recorded reason.
 
 ---
 
@@ -157,103 +174,125 @@ RawatBunda will not:
 
 ---
 
-## 6. Users and jobs to be done
+## 6. Users, roles, and jobs to be done
 
-The application has exactly **three login roles**: `bidan`, `admin`, and `pasien`. Every account has one role, and every screen is scoped to that role. Staff at a receiving hospital sign in with a **bidan (clinical) account scoped to their own facility** — receiving a referral is a facility context, not a separate role.
+RawatBunda has exactly three application roles. A hospital employee, referral coordinator, or receiving-facility user is not a fourth RawatBunda role in the MVP.
 
-### 6.1 Bidan (clinical role) — primary user
+### 6.1 Bidan
 
-**At the Puskesmas (sending side):**
+**Jobs:**
 
-- Start the day with a prioritized list instead of manually reconstructing urgency.
+- Search and select an existing patient or add a new patient before starting an encounter.
+- Enter and verify current encounter data before requesting a recommendation.
+- Review the recommendation, its reasons, missing inputs, model/rule version, and next-action suggestion.
+- Start the day with saved patient recommendations and due tasks instead of manually reconstructing urgency.
 - Open one patient record and understand the current pregnancy, recent changes, missing information, and outstanding plan.
 - Record an encounter quickly using structured entry, voice, or text.
 - Produce complete documentation without retyping the same facts.
 - Initiate and track an appropriate referral.
 
-**At the receiving hospital (same role, different facility):**
-
-- Receive a concise, verified clinical handoff.
-- See the reason, current status, trend, actions already taken, requested capability, sender, and ETA.
-- Accept, decline with a structured reason, request information, or redirect.
-
 **Success:** The right patient is reviewed at the right time, the next action is owned, documentation is signed, and any referral is acknowledged and closed.
 
-### 6.2 Admin (system administrator)
+### 6.2 Pasien
 
 **Jobs:**
 
-- Create and manage user accounts and role assignment.
-- Maintain the facility directory: capabilities, operating contacts, service status, and timestamped availability information.
-- Own and version clinical rules, required fields, timers, and document templates within approved authority.
-- Review de-identified operational patterns such as response times, declines, and overrides.
+- View only their own bidan-approved appointment, monitoring schedule, education, and referral/family instructions.
+- Receive minimum-necessary reminders without an unexplained clinical risk score.
+- Review consent and notification preferences.
 
-The admin does not participate in clinical decisions and does not accept or decline referrals.
+The pasien role is strictly **view-only** in the MVP: it cannot submit or modify any data. Symptom and home-measurement self-reporting (pending bidan verification) is deferred to P1.
 
-### 6.3 Pasien (view-only)
+**Limits:** Pasien cannot edit facility-measured observations, view another patient, approve an ML recommendation, sign SOAP documentation, select a facility, or change referral status.
+
+### 6.3 Admin
 
 **Jobs:**
 
-- Log in and see their own visit history and upcoming appointments.
-- Read the bidan-approved plain-language instruction sheet (§11.4B).
+- Manage account activation and assign one of the three roles.
+- Maintain synthetic/configured facility capabilities, contacts, service status, and status freshness.
+- Maintain approved rule, model, document-template, and notification configuration with version history.
+- Review audit and de-identified operational metrics within authorized scope.
 
-The pasien role is strictly read-only in the MVP: no self-reported measurements, no messaging, and no access to clinical drafts, internal notes, or other patients' records. The bidan remains the author and approver of everything the pasien sees.
+**Limits:** Admin does not make clinical decisions, approve recommendations, sign SOAP notes, or routinely browse full patient records. Break-glass or support access requires a separately governed audit process.
 
-### 6.4 Future personas (not MVP login roles)
+### 6.4 External facility interaction
 
-- **Bidan coordinator / Puskesmas supervisor:** reviews unresolved urgent tasks, overrides, documentation completion, and referral delays across the facility. Planned with the P1/P2 supervisor analytics.
+The receiving facility remains an external actor or future integration, not an authenticated RawatBunda role. In the MVP, the bidan contacts the facility through the approved external channel and records the named contact, response, time, reason, and source. A synthetic response simulator may be used during the demo, but it is not a fourth user account.
+
+### 6.5 Role-permission summary
+
+| Capability | Bidan | Pasien | Admin |
+|---|---:|---:|---:|
+| Select/add patient and record encounter | Yes | No | No |
+| View full assigned clinical record | Yes | Own approved summary only | No by default |
+| Submit patient-reported information | Can enter/verify | No (P1) | No |
+| Review ML/rule recommendation | Yes | No | Configuration metadata only |
+| Review and sign SOAP | Yes | No | No |
+| Choose referral destination and record response | Yes | No | No |
+| View family/referral instructions | Can author/approve | Own approved copy | No |
+| Manage users, facilities, rules, and model versions | No | No | Yes |
 
 ---
 
 ## 7. End-to-end workflow
 
-### 7.1 Before the clinic session
+### 7.1 Patient directory and selection
 
-1. RawatBunda compiles scheduled patients, overdue contacts, unresolved observations, pending results, and open referrals.
-2. Governed safety rules establish the minimum urgency.
-3. Operational rules order patients within each urgency band.
-4. The bidan sees counts, reasons, timestamps, and the next required action.
+1. Bidan opens `Pasien` and searches by the approved identifiers.
+2. Bidan selects an existing patient and confirms the active pregnancy episode.
+3. If no record exists, bidan selects `Tambah pasien`, enters the minimum identity and pregnancy fields, reviews any duplicate warning, and saves the new record.
+4. RawatBunda does not generate a recommendation until one patient and one active encounter are confirmed.
 
-### 7.2 Patient arrival and initial capture
+### 7.2 Encounter data input
 
-1. Bidan confirms identity and pregnancy episode.
-2. The patient is marked arrived.
-3. RawatBunda shows data freshness and minimum information still required.
-4. Bidan records current symptoms, observations, and available results.
-5. Plausibility, unit, and timestamp validation run immediately.
-6. New verified information re-evaluates the worklist and trend alerts.
+1. RawatBunda shows prior observations, data freshness, due tasks, and minimum information still required.
+2. Bidan records current symptoms, observations, relevant history updates, and available results.
+3. Plausibility, unit, timestamp, and duplicate validation run immediately.
+4. Bidan corrects or verifies flagged inputs and submits the encounter for recommendation.
 
-### 7.3 Bidan review
+### 7.3 Rules-and-ML recommendation
 
-1. The patient overview shows pregnancy context, history, latest values, four-visit trends, active tasks, and prior plan.
-2. RawatBunda explains every non-routine priority reason using the underlying observations.
-3. The bidan performs the clinical assessment.
-4. The bidan may raise urgency at any time and may correct an invalid measurement with an audited amendment.
+1. Governed local safety rules establish a non-negotiable minimum urgency.
+2. The ML model processes only the approved, versioned feature set and returns a proposed operational band and explanation factors.
+3. RawatBunda combines the safety floor and ML proposal without allowing the ML output to lower urgency.
+4. The result screen shows the recommendation, reasons, missing inputs, data time, rule/model version, and permitted next workflow actions.
+5. The bidan performs the clinical assessment and accepts, raises, or overrides the recommendation with an auditable reason.
+6. The confirmed state updates `Prioritas Hari Ini`, trends, and due tasks.
 
 ### 7.4 Documentation
 
-1. Bidan starts push-to-talk or types a narrative for the confirmed encounter.
-2. RawatBunda produces a transcript and highlights uncertain clinical entities.
-3. Proposed structured values are shown beside their source.
-4. The bidan accepts, edits, or rejects each critical extraction.
-5. RawatBunda generates a draft SOAP note from confirmed facts.
-6. The bidan reviews and signs; only the signed revision becomes final.
+1. Bidan starts push-to-talk, uploads a short recording, or types a narrative for the confirmed encounter.
+2. A protected backend sends the audio to a configured speech-capable provider or sends an existing transcript to the configured LLM.
+3. RawatBunda returns a transcript plus schema-constrained extracted fields and highlights uncertain clinical entities.
+4. Proposed values are shown beside their transcript source.
+5. The bidan accepts, edits, or rejects each critical extraction.
+6. RawatBunda generates a draft SOAP note from confirmed facts.
+7. The bidan reviews and signs; only the signed revision becomes final.
 
 ### 7.5 Plan and monitoring
 
-The bidan records an approved next action such as routine follow-up, earlier review, measurement repeat, test, consultation, education, or referral. Every task has an owner, due time/date, status, and resolution.
+The bidan records an approved next action such as routine follow-up, earlier review, measurement repeat, test, consultation, education, or referral. Every task has an owner, due time/date, status, and resolution. Patient-reported information (e.g., symptoms the patient describes) is entered and verified by the bidan; the pasien app does not submit data in the MVP.
 
 ### 7.6 Referral
 
-1. The bidan records the decision to refer and required capability or pathway.
+1. The bidan decides whether to open the referral workflow and records the required capability or pathway.
 2. RawatBunda removes facilities that fail mandatory constraints.
 3. It presents up to three ranked candidates with explanations and status freshness.
-4. The bidan selects and confirms the destination.
-5. The receiving facility accepts, declines with a reason, or requests more information.
+4. The bidan selects the destination and contacts it through the approved channel.
+5. The bidan records `dihubungi`, `diterima`, `ditolak`, or `perlu informasi`, including contact name, timestamp, reason, and source.
 6. A decline surfaces the next eligible facility without re-entering patient information.
 7. Departure, arrival, handover, and feedback are recorded in one timeline.
 
-### 7.7 Emergency bypass
+### 7.7 Pasien experience
+
+The patient sees only their own bidan-approved schedule, reminders, education, and family/referral instructions. The pasien experience is read-only in the MVP; symptom and home-measurement self-submission is deferred to P1, where it would remain labeled patient-reported and pending until a bidan reviews it.
+
+### 7.8 Admin workflow
+
+Admin manages user roles, facility master data, model/rule versions, and audit views. Admin cannot perform the bidan's clinical steps or mark a referral accepted on behalf of a facility.
+
+### 7.9 Emergency bypass
 
 - A persistent message states that emergency action and direct communication must not wait for RawatBunda.
 - Required-but-missing fields are marked, but optional fields never block an emergency referral.
@@ -276,17 +315,18 @@ The MVP uses three actionable priority bands rather than a 0–100 score, plus a
 
 `Data perlu diverifikasi` may coexist with an urgent band. Missing data must not hide known danger information.
 
-### 8.2 Priority ordering
+### 8.2 Recommendation and queue sequence
 
-The queue uses a lexicographic safety-first order:
+The current encounter recommendation is calculated only after the bidan selects or creates a patient and submits verified input. The engine then:
 
-1. Bidan-selected emergency and governed hard safety rules.
-2. Unresolved urgent referral states, including decline or timeout.
-3. New or worsening verified observations and relevant symptoms.
-4. Overdue action, repeat measurement, result review, or follow-up.
-5. Arrival/appointment time and waiting-time fairness.
+1. validates the encounter and exposes missing/invalid fields;
+2. applies bidan-selected urgency and governed hard safety rules;
+3. requests an ML proposal from the approved model when available;
+4. combines the outputs without allowing ML to lower the safety floor;
+5. shows the proposed band and evidence for bidan confirmation; and
+6. saves the confirmed recommendation so the patient appears in `Prioritas Hari Ini`.
 
-The MVP does not use an opaque weighted clinical-risk score.
+The saved worklist uses safety-first ordering: confirmed emergency/safety floor, unresolved referral or overdue action, recommended operational band, and then appointment/arrival time. It never treats a hidden weighted score as proof of clinical safety.
 
 ### 8.3 Priority inputs
 
@@ -312,10 +352,14 @@ The MVP does not use an opaque weighted clinical-risk score.
 - **PRI-008:** Display the active rule/model version and generation time.
 - **PRI-009:** Expire priorities when the underlying information becomes stale or materially changes.
 - **PRI-010:** Never state that a routine position proves a patient is clinically safe.
+- **PRI-011:** Do not run the recommendation without a confirmed patient, active pregnancy episode, and encounter.
+- **PRI-012:** Show model/rule version, input time, missing inputs, and two to four understandable reasons.
+- **PRI-013:** Require explicit bidan confirmation or override before the recommendation becomes the current operational state.
+- **PRI-014:** Record the raw ML proposal separately from the final rule-and-bidan-governed state.
 
-### 8.5 Future ML requirement
+### 8.5 ML readiness requirement
 
-A learned ranking may only be introduced after collecting a locally relevant target such as expert urgency band, required response time, or time-critical intervention. It must be evaluated prospectively in silent mode before affecting live queue order.
+The hackathon may demonstrate an ML recommendation using synthetic data, but this is product-flow validation rather than clinical validation. Before real use, the model must be trained or relabeled against a locally relevant target such as expert urgency band, required response time, or time-critical intervention. It must be evaluated prospectively in silent mode before affecting a live queue. A pre-eclampsia classifier cannot be presented as a validated prioritization model merely by mapping its probability to these bands.
 
 ---
 
@@ -419,16 +463,17 @@ Example:
 
 - **REF-001:** Exclude facilities missing a mandatory capability from the recommended set.
 - **REF-002:** Never represent cached or stale capacity as live.
-- **REF-003:** Distinguish `candidate`, `request sent`, `viewed`, and `accepted`.
-- **REF-004:** Require bidan confirmation before sending.
+- **REF-003:** Distinguish `candidate`, `selected`, `contacted`, `accepted-reported`, `declined-reported`, `in transit`, and `handover complete`.
+- **REF-004:** Require bidan confirmation before contact/send.
 - **REF-005:** Allow the bidan to choose another eligible facility and optionally record a reason.
-- **REF-006:** Require structured decline reason and timestamp.
+- **REF-006:** When a decline is recorded, require reason, timestamp, contact/channel, recording user, and response source.
 - **REF-007:** Surface the next eligible option without re-entering the case.
 - **REF-008:** Provide a phone/escalation fallback and prevent waiting for the app in emergencies.
 - **REF-009:** Show facility-status freshness and confirmation source.
 - **REF-010:** Preserve a complete referral event timeline through handover.
 - **REF-011:** Do not use protected characteristics or ability to pay to reduce clinical priority.
 - **REF-012:** Map the future referral request to SATUSEHAT/FHIR `ServiceRequest`, which supports subject, performer, location, reason, and supporting clinical information.[^4]
+- **REF-013:** Never claim that a facility accepted unless the status source is explicitly `bidan-recorded external confirmation` or a verified integration; a demo simulator must remain labeled simulated.
 
 ---
 
@@ -438,19 +483,30 @@ Example:
 
 Catat Cepat reduces duplicate documentation. It converts consented push-to-talk or typed information into proposed structured fields and draft documents. It does not replace the legal author or make clinical decisions.
 
-### 11.2 Capture workflow
+### 11.2 Provider architecture
+
+The implementation is provider-agnostic behind one protected backend interface. Two supported patterns are:
+
+1. **Fastest P0 path — direct audio understanding:** record a short audio clip, send it from Flutter to a protected backend/edge function, and let Gemini return a transcript plus schema-constrained JSON. Gemini officially supports audio transcription and structured output.[^11]
+2. **More controlled path — dedicated STT then LLM:** use Google Cloud Speech-to-Text or another approved speech service for the transcript, then send the transcript to Gemini or another LLM to extract structured fields and draft SOAP. Google recommends a dedicated Speech-to-Text API for real-time transcription.[^11][^12]
+
+Structured output guarantees conformance to the requested JSON shape, not that clinical values are semantically correct. The backend and bidan must still verify numbers, units, negation, identity, and clinical meaning.[^12]
+
+For the hackathon, use only synthetic speech and data. Flutter calls the backend; the Gemini or other provider key is stored only in server-side secrets. Typed input and a deterministic SOAP template remain the no-network fallback.
+
+### 11.3 Capture workflow
 
 1. Confirm patient and active encounter.
 2. Display recording state and obtain the approved notice/consent or other legally reviewed basis.
-3. Capture push-to-talk audio or typed narrative.
-4. Transcribe and retain the source during review.
-5. Extract a schema-constrained set of facts.
+3. Capture a short push-to-talk audio clip or typed narrative.
+4. Send it through the protected provider adapter and retain the transcript/source during review.
+5. Return schema-constrained JSON containing transcript segments, proposed facts, SOAP candidates, missing fields, and source spans.
 6. Highlight low-confidence words, negations, names, numbers, units, dates, medications, doses, and allergies.
 7. Require explicit confirmation for critical extracted values.
 8. Generate documents only from verified structured data and clearly attributed narrative.
 9. Bidan reviews a diff, edits, and signs.
 
-### 11.3 SOAP draft rules
+### 11.4 SOAP draft rules
 
 SOAP is explicitly recognized in Kementerian Kesehatan's professional standard for bidan as a format for complete, accurate, concise, clear, and accountable progress notes.[^10] The exact local template and required fields nevertheless remain configurable.
 
@@ -465,7 +521,7 @@ Every draft displays:
 
 > DRAF AI — belum menjadi rekam medis sampai diperiksa dan disahkan bidan.
 
-### 11.4 Separate generated outputs
+### 11.5 Separate generated outputs
 
 #### A. Clinical referral/handoff
 
@@ -489,9 +545,9 @@ Plain Bahasa Indonesia containing only approved minimum information:
 - Documents/items to bring.
 - Bidan-approved instructions and when to use existing emergency channels.
 
-The family document is not the clinical referral letter and must not expose the full record. This is the document surfaced to the `pasien` login (§6.3).
+The family document is not the clinical referral letter and must not expose the full record.
 
-### 11.5 Functional requirements
+### 11.6 Functional requirements
 
 - **DOC-001:** Recording cannot start without a confirmed patient and encounter.
 - **DOC-002:** Provide typed/prepared transcript fallback when speech is unavailable.
@@ -507,6 +563,10 @@ The family document is not the clinical referral letter and must not expose the 
 - **DOC-012:** Generate clinical handoff and family instructions as separate artifacts.
 - **DOC-013:** Block unsupported diagnosis, medication, dosage, or treatment generation.
 - **DOC-014:** Send third-party AI requests only through a protected backend; never embed provider secrets in Flutter.
+- **DOC-015:** Isolate Gemini or any alternative behind an `AiDocumentationProvider` interface so the provider can change without rewriting the UI.
+- **DOC-016:** Require a strict JSON schema and server validation; reject unknown fields and values that fail type, unit, range, or patient/encounter binding checks.
+- **DOC-017:** Show a recoverable error and preserve typed/manual documentation when the speech or LLM provider is unavailable.
+- **DOC-018:** Do not use submitted patient/audio data for model training unless a separate, explicit, legally approved process exists.
 
 SATUSEHAT provides `Composition` for structured clinical documents and `DocumentReference` for governed document metadata or attachments.[^5][^6]
 
@@ -514,17 +574,29 @@ SATUSEHAT provides `Composition` for structured clinical documents and `Document
 
 ## 12. Information architecture and key screens
 
-Screens are role-scoped. The three-tab structure below is the **bidan** view and remains appropriate for the hackathon. The **admin** role sees a simple management view (user accounts, facility directory, rule/template versions). The **pasien** role sees a single read-only screen (own visits, upcoming appointments, approved instructions).
+Navigation and permissions are role-specific. The bidan's main navigation becomes `Beranda`, `Pasien`, and `Profil`; referral is a patient-context workflow rather than a separate global role or receiving portal.
 
-### Beranda
+### Authentication and role routing
+
+- After login, route the user based on exactly one role: `bidan`, `pasien`, or `admin`.
+- Deny unauthorized routes in both the UI and backend/RLS; hiding a button is not authorization.
+- The public demo uses synthetic accounts and prominently labels all data simulated.
+
+### Bidan — Beranda
 
 - `Prioritas Hari Ini` counts.
-- Search and filters.
-- Thirty-patient synthetic worklist.
+- Saved recommendation and due-task summary.
 - Reason chips and next actions.
 - Pending referral summary.
 
-### Patient overview
+### Bidan — Pasien
+
+- Search and filter the patient directory.
+- Select a patient to open the current pregnancy episode.
+- `Tambah pasien` action with minimum identity/pregnancy fields and duplicate warning.
+- No recommendation is shown for a new patient until encounter data are submitted.
+
+### Bidan — Patient overview
 
 - Identity and pregnancy summary.
 - Current operational band and evidence.
@@ -532,14 +604,16 @@ Screens are role-scoped. The three-tab structure below is the **bidan** view and
 - Symptoms, history, unresolved tasks, and recent notes.
 - Actions: `Catat kunjungan`, `Buat catatan`, `Mulai rujukan`.
 
-### Record encounter
+### Bidan — Record encounter and recommendation
 
 - Structured measurements with visible units.
 - Symptoms and free narrative.
 - Data-quality validation.
-- Save and update worklist/trends.
+- `Dapatkan rekomendasi` action after required data validation.
+- Result screen with band, safety floor, ML proposal, reasons, missing inputs, version, and confirm/override actions.
+- Save the bidan-confirmed state and update worklist/trends.
 
-### Documentation review
+### Bidan — Documentation review
 
 - Audio controls or typed transcript.
 - Transcript and confidence highlights.
@@ -547,18 +621,32 @@ Screens are role-scoped. The three-tab structure below is the **bidan** view and
 - SOAP sections and source links.
 - `Draf`, `Perlu diperiksa`, and `Disahkan` states.
 
-### Rujukan
+### Bidan — Rujukan within a patient
 
 Retain and extend the existing flow:
 
 1. Case/referral review.
 2. Facility matching.
-3. Receiving-facility decision.
+3. Bidan-recorded external facility response.
 4. Timeline and handover.
 
-### Profil
+### Pasien
 
-- User/facility identity.
+- `Beranda`: own approved next appointment, reminders, and education.
+- `Monitoring`: own bidan-approved monitoring schedule and upcoming checks (view-only).
+- `Profil`: own identity summary, notification and consent preferences.
+- No data entry of any kind, and no clinician queue, ML score, SOAP editor, facility administration, or other patient's data.
+
+### Admin
+
+- `Dashboard`: de-identified operational health and audit summary.
+- `Master Data`: users/roles, facilities, capabilities, contacts, rule versions, model versions, and templates.
+- `Profil`: admin identity, security, and sign-out.
+- No clinical recommendation approval or SOAP signature.
+
+### Profil shared requirements
+
+- User identity and one assigned role.
 - Connectivity and synchronization state.
 - Data and AI limitations.
 - Rule/model version.
@@ -572,28 +660,31 @@ Retain and extend the existing flow:
 
 Each item is tagged against the current codebase: **[built]** already works, **[partial]** exists but needs extension, **[new]** not started.
 
-- Three login roles (admin, bidan, pasien) with demo-level role-appropriate screens. **[partial — Supabase auth exists; roles and role-scoped screens are new]**
-- Thirty synthetic patients on a priority worklist. **[new]**
-- Three operational bands plus the cross-cutting `Data perlu diverifikasi` state (§8.1), with exact, understandable reasons. **[new]**
-- Deterministic safety rules; no learned model required for safety. **[partial — severe-BP rule exists in `clinical_rules.dart`; extend to the worklist]**
+- Three role-gated synthetic accounts: Bidan, Pasien, and Admin; the bidan journey receives the deepest implementation. **[partial — Supabase auth exists; roles and role routing are new]**
+- Synthetic patient directory with search, patient selection, and `Tambah pasien`. **[new]**
+- Encounter input is blocked until a patient and pregnancy episode are selected. **[new]**
+- Three operational bands plus the separate `Data perlu diverifikasi` state, with exact, understandable reasons. **[new]**
+- Deterministic safety rules; no learned model required for safety. **[partial — severe-BP rule exists in `clinical_rules.dart`; extend to bands]**
+- A prototype ML recommendation after encounter submission, visibly labeled as synthetic/experimental and unable to lower the safety floor. **[new — stretch; build after the rules engine works]**
 - One synthetic patient with at least four dated visits. **[new]**
 - BP and weight trend; optional glucose/urine protein only when marked as performed. **[new]**
 - Record one new encounter and update the queue immediately. **[new]**
-- Typed or prepared transcript fallback, with optional live speech-to-text. **[new]**
+- Typed or prepared transcript fallback, with optional short-audio Gemini/STT API demonstration through a protected backend. **[new — typed fallback first; live audio is stretch]**
 - Editable SOAP draft with source verification and explicit draft status. **[new]**
 - Referral handoff populated only from confirmed data. **[new]**
 - Three simulated facilities with capability, travel time, status, and freshness. **[built]**
 - Bidan-confirmed destination. **[built]**
-- Receiving interface with accept/decline and mandatory decline reason. **[partial — accept exists; structured decline reason is new]**
+- Bidan-recorded external contact result with mandatory decline reason and source; optional labeled response simulator for the demo. **[partial — the existing receiving screen becomes the labeled response simulator]**
 - Reroute without re-entry. **[new]**
 - Realtime or in-memory referral timeline. **[built]**
 - Clinical handoff and family-instruction preview. **[new]**
+- Minimal patient view (read-only): approved family instruction and monitoring schedule; minimal admin view of synthetic facility configuration. **[new]**
 - Visible synthetic-data, decision-support, and offline/not-sent labels. **[partial]**
 
 ### 13.2 P1 — pilot-ready
 
 - Real longitudinal patient and pregnancy-episode persistence.
-- Production-grade, server-enforced role and facility-scoped authorization (demo-level role screens ship in P0).
+- Role and facility-scoped authorization.
 - Configurable and clinically approved priority rules.
 - Durable encrypted offline store, outbox, and conflict resolution.
 - Production speech recognition with typed fallback.
@@ -605,6 +696,8 @@ Each item is tagged against the current codebase: **[built]** already works, **[
 - Approved messaging/notification channels.
 - SATUSEHAT sandbox mapping and conformance tests.
 - Co-design and usability testing with bidans and receiving staff.
+- Patient-facing usability and comprehension testing.
+- Pasien self-reporting of simple home measurements and symptoms (weight, home BP, symptoms) as `patient-reported` data, visibly pending until bidan verification.
 
 ### 13.3 P2 — validated deployment
 
@@ -620,6 +713,7 @@ Each item is tagged against the current codebase: **[built]** already works, **[
 
 - Real patients or live hospital status.
 - Automatic diagnosis, treatment, referral, or signed documentation.
+- An authenticated receiving-facility role or production hospital portal.
 - Continuous ambient recording.
 - Full RME replacement.
 - Production SATUSEHAT integration.
@@ -629,14 +723,24 @@ Each item is tagged against the current codebase: **[built]** already works, **[
 
 ## 14. P0 acceptance criteria
 
+### Roles and patient selection
+
+- Login routes a synthetic user only to the Bidan, Pasien, or Admin experience assigned to that account.
+- A bidan can search and select an existing synthetic patient.
+- `Tambah pasien` creates a synthetic patient and active pregnancy episode after required-field and duplicate checks.
+- No encounter or recommendation can be created without a selected patient and active pregnancy episode.
+- Pasien can view only their own approved summary; Admin cannot sign documentation or approve clinical recommendations.
+
 ### Priority queue
 
-- Given 30 synthetic patients, every patient has one primary operational band; any applicable `Data perlu diverifikasi` state is shown separately.
+- After current encounter input is submitted, the selected patient receives one primary operational band; any applicable `Data perlu diverifikasi` state is shown separately.
+- The result separates governed safety floor, raw ML proposal, and final bidan-confirmed state.
 - A synthetic emergency scenario always appears at the top.
 - Every non-routine item shows its triggering observations and timestamps.
 - New verified input re-evaluates the band without restarting the app.
 - Bidan override records user, time, and reason.
 - No screen calls the output a diagnosis or unvalidated disease probability.
+- Saving the result updates `Prioritas Hari Ini`; patients without adequate current data remain visibly `belum dinilai`, not routine.
 
 ### Monitoring
 
@@ -655,6 +759,7 @@ Each item is tagged against the current codebase: **[built]** already works, **[
 - Note remains `Draf AI` until the bidan confirms it.
 - Only confirmed data populate the referral handoff.
 - Clinical handoff and family instructions are separate.
+- Provider/API failure preserves the encounter and offers typed/manual SOAP completion.
 
 ### Facility matching
 
@@ -666,16 +771,10 @@ Each item is tagged against the current codebase: **[built]** already works, **[
 
 ### Closed-loop referral
 
-- A referral sent from the bidan view appears in the receiving view.
-- Accept/decline updates both views.
+- The bidan can record an externally confirmed accept/decline response with contact, channel, timestamp, reason, and source.
+- A synthetic automated response is visibly labeled simulated and does not imply real hospital connectivity.
 - Timeline records event and elapsed time.
 - A decline does not require re-entering patient or encounter data.
-
-### Roles and access
-
-- Each login role (admin, bidan, pasien) sees only its role-appropriate screens.
-- A pasien account is read-only and sees only its own record and approved instructions.
-- The receiving-facility view is a bidan (clinical) account scoped to that facility.
 
 ### Safety
 
@@ -690,7 +789,9 @@ Each item is tagged against the current codebase: **[built]** already works, **[
 
 ### 15.1 Core entities
 
-- `User` and `PractitionerRole` (role: `admin` | `bidan` | `pasien`; clinical accounts are facility-scoped)
+- `User` with exactly one `app_role: bidan | pasien | admin`
+- `BidanProfile`, `PatientProfile`, and `AdminProfile`
+- `PatientAccess` or assignment relationship
 - `Organization` and `Facility`
 - `FacilityCapability`
 - `FacilityStatus` with source and freshness
@@ -707,6 +808,7 @@ Each item is tagged against the current codebase: **[built]** already works, **[
 - `SignedDocument`
 - `ReferralCase`
 - `ReferralAttempt`
+- `FacilityContactEvent` with channel, contact, response, source, and timestamp
 - `TransportEvent`
 - `AuditEvent`
 
@@ -732,7 +834,14 @@ supersedes_observation_id when corrected
 
 Clinical observations are append-only. Corrections create an amendment relationship; they do not silently delete history.
 
-### 15.3 Algorithm provenance
+### 15.3 Authorization rules
+
+- Bidan may access only patients assigned through the approved facility/care relationship and may create/sign only under their own identity.
+- Pasien may read only their own approved summary/documents; the role has no create or modify permission in the MVP (patient-reported self-submission is deferred to P1).
+- Admin may manage accounts, facility/configuration metadata, and authorized audit/aggregate views, but has no ordinary clinical-note signing permission.
+- Facility response is an event with provenance, not a fourth application user.
+
+### 15.4 Algorithm provenance
 
 Every priority, trend, or recommendation stores:
 
@@ -768,11 +877,21 @@ Flutter UI
 
 Recommended additions:
 
+- Role-aware router plus backend/RLS authorization for `bidan`, `pasien`, and `admin`.
 - `PatientRepository`, `EncounterRepository`, `TaskRepository`, and `DocumentRepository`.
-- Local deterministic rule/trend service in Dart.
+- Local deterministic rule/trend service in Dart plus an `MlRecommendationService` adapter.
 - Facility eligibility and ranking service with visible factors.
-- Protected backend/edge function for speech and LLM calls.
+- Protected backend/edge function exposing a provider-neutral `AiDocumentationProvider`.
 - Template fallback when AI/network is unavailable.
+
+```text
+Flutter audio/text
+  → authenticated Supabase Edge Function
+      → option A: Gemini audio → transcript + structured JSON
+      → option B: Speech-to-Text → transcript → Gemini/LLM structured JSON
+  → server schema and clinical-field validation
+  → bidan review/edit/sign
+```
 
 ### 16.2 Offline truth
 
@@ -803,6 +922,7 @@ Required offline copy:
 - Server validates schema, allowed fields, patient/encounter binding, and source references.
 - Flutter never contains a service-role or AI-provider secret.
 - A model output cannot directly mutate a signed record or send a referral.
+- Speech/LLM providers are replaceable adapters; selecting Gemini is an implementation choice, not a product dependency.
 
 ---
 
@@ -812,7 +932,7 @@ Before any real-patient pilot:
 
 - Appoint a clinical safety owner, privacy/data owner, security owner, and referral-network operational owner.
 - Obtain Indonesian legal/regulatory review for intended use and AI processing.
-- Apply facility- and role-scoped authorization; authenticated-only access is insufficient.
+- Apply patient-assignment, own-record, and role-scoped authorization for Bidan, Pasien, and Admin; authenticated-only access is insufficient.
 - Encrypt data in transit and at rest, including the local store.
 - Log view, edit, generation, sign, export, send, and override events.
 - Define correction, retention, deletion, lost-device, breach, and downtime procedures.
@@ -858,7 +978,7 @@ Do not use generic accuracy as the only prioritization metric.
 
 - Recommended facilities meeting every mandatory capability; target 100% in governed tests.
 - First-destination acceptance rate.
-- Sent-to-viewed and sent-to-accepted time.
+- Contact-initiated-to-response and decision-to-externally-confirmed-acceptance time.
 - Decline/reroute rate and structured reasons.
 - Stale-status errors and capability mismatches.
 - Percentage of referrals with confirmed arrival and handover.
@@ -890,7 +1010,7 @@ The hackathon may claim an integrated workflow demonstration and measured task-t
 | Trend connects missing values | False impression of stability | Preserve gaps; no clinical imputation |
 | Facility status is stale | Misdirected referral | Timestamp, source, warning, direct confirmation |
 | Closest hospital lacks capability | Delay to definitive care | Hard capability filter before travel-time ranking |
-| Recommendation appears accepted | False assurance | Explicit candidate/requested/viewed/accepted states |
+| Recommendation appears accepted | False assurance | Explicit selected/contacted/accepted-reported states plus contact, source, and timestamp |
 | STT mishears a number or negation | Incorrect record or handoff | Confidence highlight, replay/source, explicit confirmation |
 | LLM invents diagnosis/treatment | Clinical harm | Constrained schema, blocked fields, source linking, mandatory review |
 | Unsigned draft is transmitted | Unverified information sent | State machine and send guard |
@@ -942,59 +1062,69 @@ No learned model may influence production priority before the relevant release g
 
 ### Setup
 
-- Thirty synthetic pregnancies are scheduled or monitored at a fictional Puskesmas.
+- A synthetic bidan account has a patient directory at a fictional Puskesmas.
+- One existing patient and one `Tambah pasien` example are prepared.
 - One patient has a new concerning observation and a worsening four-visit trend.
 - Three synthetic hospitals have different capabilities, travel times, and status freshness.
 
 ### Demo
 
-1. Open `Prioritas Hari Ini`; the patient is pinned with explicit reasons.
-2. Open the patient; show the raw four-visit trend and outstanding action.
-3. Add today's encounter; watch the queue/trend update.
-4. Enter or dictate a short Bahasa Indonesia note.
-5. Review highlighted numbers and negations.
-6. Show the SOAP draft, leave unsupported Assessment information blank, then confirm the bidan's assessment and sign.
-7. Start referral; show hard capability filtering and top-three explained candidates.
-8. Send to Facility A; it declines with a structured capability/status reason.
-9. Select Facility B without re-entry; Facility B accepts on the second device (signed in as that facility's clinical account).
-10. Preview the separate clinical handoff and family instructions.
-11. Complete departure, arrival, and handover on the timeline.
-12. Optional closer: sign in as `pasien` and show the read-only view with the approved family instructions.
+1. Login as Bidan and open `Pasien`.
+2. Search and select the prepared patient; briefly show `Tambah pasien` and duplicate protection.
+3. Add today's encounter and tap `Dapatkan rekomendasi`.
+4. Show the governed safety floor, ML proposal, reasons, missing data, version, and bidan confirm/override action.
+5. Save it and show the updated `Prioritas Hari Ini` plus four-visit trend.
+6. Enter or dictate a short Bahasa Indonesia note through the protected AI endpoint.
+7. Review highlighted numbers and negations.
+8. Show the SOAP draft, leave unsupported Assessment information blank, then confirm the bidan's assessment and sign.
+9. Start referral; show hard capability filtering and top-three explained candidates.
+10. Record that Facility A declined through an external call, including reason and source.
+11. Select Facility B without re-entry and record externally confirmed acceptance; no receiving-facility account is used.
+12. Preview the patient's separate family instructions and complete the timeline.
+13. Optionally switch to the Pasien account to show the approved instruction, then Admin to show synthetic facility configuration.
 
 ### Judge-facing message
 
-> RawatBunda does not replace the bidan or diagnose pre-eclampsia. It turns one verified encounter into a prioritized workflow, a visible trend, reviewed documentation, and a closed-loop referral to an appropriate facility.
+> RawatBunda does not replace the bidan or diagnose pre-eclampsia. The bidan selects the patient and enters the encounter; RawatBunda then provides an explainable workflow recommendation, a visible trend, reviewed documentation, and a coordinated referral to an appropriate facility.
 
 ---
 
 ## 22. Roadmap for the current Flutter project
 
-### Increment 1 — worklist foundation
+### Increment 1 — roles and patient foundation
 
-- Add synthetic patients, episodes, encounters, observations, and tasks.
-- Convert Beranda into `Prioritas Hari Ini`.
-- Add deterministic priority service and reason chips.
+- Add role routing for Bidan, Pasien, and Admin.
+- Add synthetic patients, episodes, patient assignment, search/select, and `Tambah pasien`.
+- Add required-field and duplicate checks.
 
-### Increment 2 — patient and trend
+### Increment 2 — encounter and recommendation
 
 - Add patient overview and record-encounter screen.
+- Add deterministic safety floor and ML recommendation adapter.
+- Add recommendation review/confirm/override and reason chips.
+- Convert Beranda into `Prioritas Hari Ini` from saved recommendations.
+
+### Increment 3 — monitoring
+
 - Add four-visit charts and trend/task logic.
 
-### Increment 3 — documentation
+### Increment 4 — documentation
 
-- Add transcript input and extracted-field review.
+- Add provider-neutral backend endpoint, transcript input, and extracted-field review.
+- Connect short-audio Gemini or STT-plus-LLM processing using server-side secrets.
 - Add template/AI SOAP draft with draft-review-sign states.
 - Add clinical handoff and family-instruction previews.
 
-### Increment 4 — referral integration
+### Increment 5 — referral and secondary role surfaces
 
 - Populate the existing referral flow from the confirmed encounter.
-- Add hard capability filtering, recommendation explanation, decline reason, and reroute.
+- Add hard capability filtering, recommendation explanation, bidan-recorded external response, decline reason, and reroute.
+- Add minimal Pasien approved-summary view and Admin synthetic-facility configuration view.
 
-### Increment 5 — verification and pitch
+### Increment 6 — verification and pitch
 
 - Run formatting, analysis, tests, and web build.
-- Rehearse Supabase two-device and in-memory fallback modes.
+- Rehearse Supabase role accounts and in-memory fallback mode.
 - Test the complete scripted flow at mobile-browser dimensions.
 - Record a two-minute fallback video.
 
@@ -1004,6 +1134,7 @@ No learned model may influence production priority before the relevant release g
 
 ### Clinical/workflow
 
+- Which identifiers and minimum fields are required to add a patient, and what is the duplicate-resolution process?
 - Which national and local rules establish the initial safety floor?
 - What are the exact operational bands and response targets?
 - Which fields are required before routine prioritization, but non-blocking in an emergency?
@@ -1020,7 +1151,7 @@ No learned model may influence production priority before the relevant release g
 ### Referral operations
 
 - Who verifies facility capabilities and availability, and how often?
-- Who responds at the receiving facility and during which hours?
+- Through which approved external channel does the bidan contact the receiving facility, and who is recorded as the respondent?
 - What happens when all eligible facilities decline or do not respond?
 - Which direct-call, PSC 119, or regional escalation pathways must remain visible?
 
@@ -1033,8 +1164,8 @@ No learned model may influence production priority before the relevant release g
 
 ### Technology
 
-- Is typed transcript sufficient for the hackathon, with live speech as a progressive enhancement?
-- Which AI provider and contractual privacy settings are approved for a future pilot?
+- Will P0 send a short recorded clip directly to Gemini, or use Speech-to-Text followed by Gemini for easier transcript review?
+- Which provider, region, retention setting, and contractual privacy terms are approved before any real patient data are processed?
 - When should the project move from web-first to native Android for stronger offline and on-device speech support?
 
 ---
@@ -1076,3 +1207,7 @@ No learned model may influence production priority before the relevant release g
 [^9]: World Health Organization. “Ethics and governance of artificial intelligence for health” and guiding principles. https://www.who.int/publications/i/item/9789240029200 and https://www.who.int/news/item/28-06-2021-who-issues-first-global-report-on-artificial-intelligence-ai-in-health-and-six-guiding-principles-for-its-design-and-use
 
 [^10]: Kementerian Kesehatan RI. *Standar Profesi Bidan*; documentation is described as complete, accurate, concise, clear, accountable, and written as SOAP progress notes. https://repositori-ditjen-nakes.kemkes.go.id/294/2/Buku%20digital%20Standar%20Profesi%20Bidan.pdf
+
+[^11]: Google AI for Developers. “Audio understanding — Gemini API”; Gemini supports audio analysis/transcription and structured transcription output, while the documentation directs real-time transcription use cases to a dedicated Speech-to-Text API. https://ai.google.dev/gemini-api/docs/audio
+
+[^12]: Google AI for Developers and Google Cloud. “Structured outputs — Gemini API” and “Transcribe audio from streaming input — Cloud Speech-to-Text.” Structured output guarantees schema-conforming syntax but still requires semantic/application validation. https://ai.google.dev/gemini-api/docs/structured-output and https://docs.cloud.google.com/speech-to-text/docs/streaming-recognize
