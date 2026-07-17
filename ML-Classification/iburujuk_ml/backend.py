@@ -13,6 +13,7 @@ from uuid import UUID
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from starlette.concurrency import run_in_threadpool
+from starlette.middleware.cors import CORSMiddleware
 import uvicorn
 
 from .api import (
@@ -67,6 +68,18 @@ from .stt import (
 
 
 LOGGER = logging.getLogger(__name__)
+
+LOCAL_WEB_ORIGIN_REGEX = r"^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?$"
+
+
+def cors_allowed_origins_from_environment() -> list[str]:
+    """Return explicit non-local browser origins configured for this backend."""
+
+    return [
+        origin.strip().rstrip("/")
+        for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
 
 
 async def read_limited_audio_body(request: Request) -> bytes:
@@ -215,6 +228,7 @@ def create_app(
     store: PredictionStore | None = None,
     auth_verifier: AuthVerifier | None = None,
     stt_service: SpeechToTextService | None = None,
+    cors_allowed_origins: Sequence[str] | None = None,
 ) -> FastAPI:
     """Create the app-facing backend with injectable test/local adapters."""
 
@@ -256,6 +270,23 @@ def create_app(
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
+    )
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(
+            cors_allowed_origins
+            if cors_allowed_origins is not None
+            else cors_allowed_origins_from_environment()
+        ),
+        allow_origin_regex=LOCAL_WEB_ORIGIN_REGEX,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=[
+            "Accept",
+            "Authorization",
+            "Content-Type",
+            "X-Audio-Filename",
+        ],
+        max_age=600,
     )
 
     async def authenticate_bidan(

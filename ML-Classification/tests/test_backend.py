@@ -92,6 +92,38 @@ class ProtectedBackendTests(unittest.TestCase):
         package_path = Path(iburujuk_ml.__file__).resolve()
         self.assertTrue(package_path.is_relative_to(ML_ROOT))
 
+    def test_local_flutter_web_cors_preflight_is_allowed(self) -> None:
+        with TestClient(self.application) as client:
+            response = client.options(
+                "/v1/patients",
+                headers={
+                    "origin": "http://localhost:54321",
+                    "access-control-request-method": "POST",
+                    "access-control-request-headers": "authorization,content-type",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers["access-control-allow-origin"],
+            "http://localhost:54321",
+        )
+        self.assertIn("POST", response.headers["access-control-allow-methods"])
+
+    def test_unconfigured_remote_web_origin_is_rejected(self) -> None:
+        with TestClient(self.application) as client:
+            response = client.options(
+                "/v1/patients",
+                headers={
+                    "origin": "https://untrusted.example",
+                    "access-control-request-method": "POST",
+                    "access-control-request-headers": "authorization,content-type",
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn("access-control-allow-origin", response.headers)
+
     def test_example_matches_the_public_request_schema(self) -> None:
         self.request_validator.validate(self.example)
 

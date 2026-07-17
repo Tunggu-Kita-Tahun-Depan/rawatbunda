@@ -113,11 +113,17 @@ SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 IBURUJUK_MODEL_SHA256
 GROQ_API_KEY
+CORS_ALLOWED_ORIGINS
 ```
 
-For Android emulator development, Flutter defaults to
-`BACKEND_URL=http://10.0.2.2:8081`. Override it with `--dart-define` for a
-physical device or deployed HTTPS backend.
+For local development, Flutter Web derives `BACKEND_URL` from the browser host
+and port `8081`, while an Android emulator defaults to
+`http://10.0.2.2:8081`. A physical device still needs the development
+computer's LAN address, for example
+`--dart-define=BACKEND_URL=http://192.168.1.10:8081`. A deployed Web build must
+use an HTTPS backend override. Localhost Web origins are accepted by default;
+set `CORS_ALLOWED_ORIGINS` to a comma-separated list of additional trusted Web
+origins.
 
 ## Architecture
 
