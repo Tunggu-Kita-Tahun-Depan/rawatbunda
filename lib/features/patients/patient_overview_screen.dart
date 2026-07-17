@@ -279,10 +279,12 @@ class _VisitRow extends StatelessWidget {
       else
         'TD tidak tercatat',
       if (visit.weightKg != null) 'BB ${visit.weightKg} kg',
-      'BMI ${visit.bmiKgM2.toStringAsFixed(1)}',
-      'GD ${visit.bloodSugar.display}',
-      'Suhu ${visit.bodyTemperature.display}',
-      'Nadi ${visit.heartRateBpm} bpm',
+      if (visit.bmiKgM2 != null)
+        'BMI ${visit.bmiKgM2!.toStringAsFixed(1)}',
+      if (visit.bloodSugar != null) 'GD ${visit.bloodSugar!.display}',
+      if (visit.bodyTemperature != null)
+        'Suhu ${visit.bodyTemperature!.display}',
+      if (visit.heartRateBpm != null) 'Nadi ${visit.heartRateBpm} bpm',
       switch (visit.urineProtein) {
         UrineProtein.notTested => null,
         UrineProtein.negative => 'Protein urin negatif',

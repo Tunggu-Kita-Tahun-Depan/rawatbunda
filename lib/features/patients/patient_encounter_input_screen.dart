@@ -1,9 +1,15 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:record/record.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../models/patient.dart';
+import '../../services/clinical_backend_client.dart';
 import '../../shared/widgets/rawat_bunda_components.dart';
 import '../../state/patient_state.dart';
 
@@ -30,7 +36,7 @@ class _PatientEncounterInputScreenState
   final _notesController = TextEditingController();
 
   String _bloodSugarUnit = 'mg/dL';
-  String _temperatureUnit = '°C';
+  String _temperatureUnit = 'C';
   bool _previousComplications = false;
   bool _preexistingDiabetes = false;
   bool _gestationalDiabetes = false;
@@ -38,6 +44,16 @@ class _PatientEncounterInputScreenState
   bool _severeHeadache = false;
   bool _visualDisturbance = false;
   UrineProtein _urineProtein = UrineProtein.notTested;
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  StreamSubscription<Uint8List>? _audioSubscription;
+  BytesBuilder _pcmAudio = BytesBuilder(copy: false);
+  bool _recording = false;
+  bool _transcribing = false;
+  bool _saving = false;
+  bool _reviewConfirmed = false;
+  String? _sttDraftId;
+  Map<String, String> _soapNote = const {};
+  List<String> _sttWarnings = const [];
 
   @override
   void initState() {
@@ -48,16 +64,17 @@ class _PatientEncounterInputScreenState
       if (latest == null || !mounted) return;
       setState(() {
         _weightController.text = latest.weightKg?.toStringAsFixed(1) ?? '';
-        _heightController.text = latest.heightCm.toStringAsFixed(0);
-        _bloodSugarController.text = latest.bloodSugar.displayValue;
-        _bloodSugarUnit = latest.bloodSugar.unit;
-        _temperatureController.text = latest.bodyTemperature.displayValue;
-        _temperatureUnit = latest.bodyTemperature.unit;
-        _heartRateController.text = latest.heartRateBpm.toString();
-        _previousComplications = latest.previousComplications;
-        _preexistingDiabetes = latest.preexistingDiabetes;
-        _gestationalDiabetes = latest.gestationalDiabetes;
-        _mentalHealthIndicator = latest.mentalHealthIndicator;
+        _heightController.text = latest.heightCm?.toStringAsFixed(0) ?? '';
+        _bloodSugarController.text = latest.bloodSugar?.displayValue ?? '';
+        _bloodSugarUnit = latest.bloodSugar?.unit ?? 'mg/dL';
+        _temperatureController.text =
+            latest.bodyTemperature?.displayValue ?? '';
+        _temperatureUnit = latest.bodyTemperature?.unit ?? 'C';
+        _heartRateController.text = latest.heartRateBpm?.toString() ?? '';
+        _previousComplications = latest.previousComplications ?? false;
+        _preexistingDiabetes = latest.preexistingDiabetes ?? false;
+        _gestationalDiabetes = latest.gestationalDiabetes ?? false;
+        _mentalHealthIndicator = latest.mentalHealthIndicator ?? false;
       });
     });
   }
@@ -72,6 +89,8 @@ class _PatientEncounterInputScreenState
     _weightController.dispose();
     _heartRateController.dispose();
     _notesController.dispose();
+    _audioSubscription?.cancel();
+    _audioRecorder.dispose();
     super.dispose();
   }
 
@@ -345,19 +364,54 @@ class _PatientEncounterInputScreenState
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
-                      onPressed: _simulateSpeechDraft,
-                      icon: const Icon(Icons.graphic_eq_rounded),
-                      label: const Text('Gunakan AI Speech to Text'),
+                      onPressed: _transcribing || _saving
+                          ? null
+                          : () => _toggleRecording(patient),
+                      icon: Icon(
+                        _recording
+                            ? Icons.stop_circle_outlined
+                            : Icons.graphic_eq_rounded,
+                      ),
+                      label: Text(
+                        _recording
+                            ? 'Stop & proses rekaman'
+                            : _transcribing
+                            ? 'Memproses rekaman...'
+                            : 'Rekam dengan AI Speech to Text',
+                      ),
                     ),
+                    if (_sttDraftId != null || _sttWarnings.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      InfoNotice(
+                        icon: Icons.auto_awesome_outlined,
+                        title: 'Draf AI siap diperiksa',
+                        message: _sttWarnings.isEmpty
+                            ? 'Periksa seluruh angka, satuan, negasi, dan SOAP.'
+                            : _sttWarnings.join('\n'),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _notesController,
                       minLines: 3,
                       maxLines: 6,
                       decoration: const InputDecoration(
-                        labelText: 'Catatan kunjungan',
+                        labelText: 'Catatan kunjungan / SOAP (dapat diedit)',
                         alignLabelWithHint: true,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _reviewConfirmed,
+                      onChanged: (value) => setState(
+                        () => _reviewConfirmed = value ?? false,
+                      ),
+                      title: const Text('Saya sudah memeriksa data dan SOAP'),
+                      subtitle: const Text(
+                        'Konfirmasi bidan wajib sebelum data menjadi encounter final.',
+                      ),
+                      controlAffinity: ListTileControlAffinity.leading,
                     ),
                   ],
                 ),
@@ -366,9 +420,13 @@ class _PatientEncounterInputScreenState
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => _save(patient),
+                  onPressed: _saving || _recording || _transcribing
+                      ? null
+                      : () => _save(patient),
                   icon: const Icon(Icons.save_rounded),
-                  label: const Text('Simpan data kunjungan'),
+                  label: Text(
+                    _saving ? 'Menyimpan...' : 'Konfirmasi & simpan kunjungan',
+                  ),
                 ),
               ),
             ],
@@ -387,28 +445,138 @@ class _PatientEncounterInputScreenState
     return calculateBmiKgM2(weightKg: weight, heightCm: height);
   }
 
-  void _simulateSpeechDraft() {
+  Future<void> _toggleRecording(Patient patient) async {
+    if (_recording) {
+      await _finishRecording(patient);
+      return;
+    }
+    if (patient.pregnancyEpisodeId == null) {
+      _showError('Episode kehamilan aktif belum tersedia di database.');
+      return;
+    }
+    try {
+      if (!await _audioRecorder.hasPermission()) {
+        _showError('Izin mikrofon diperlukan untuk Speech to Text.');
+        return;
+      }
+      _pcmAudio = BytesBuilder(copy: false);
+      final stream = await _audioRecorder.startStream(
+        const RecordConfig(
+          encoder: AudioEncoder.pcm16bits,
+          sampleRate: 16000,
+          numChannels: 1,
+        ),
+      );
+      _audioSubscription = stream.listen(_pcmAudio.add);
+      setState(() => _recording = true);
+    } catch (error) {
+      _showError('Rekaman tidak dapat dimulai: $error');
+    }
+  }
+
+  Future<void> _finishRecording(Patient patient) async {
     setState(() {
-      _notesController.text =
-          'Draf AI: pasien melaporkan keluhan ringan. Periksa kembali angka, '
-          'satuan, negasi, dan rencana sebelum disimpan.';
+      _recording = false;
+      _transcribing = true;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Draf simulasi dibuat. Endpoint AI belum dihubungkan.'),
-      ),
-    );
+    try {
+      await _audioRecorder.stop();
+      await _audioSubscription?.cancel();
+      _audioSubscription = null;
+      final pcm = _pcmAudio.takeBytes();
+      if (pcm.isEmpty) throw StateError('Rekaman kosong');
+      final draft = await context.read<ClinicalBackendClient>().createSttDraft(
+        patientId: patient.id,
+        pregnancyEpisodeId: patient.pregnancyEpisodeId!,
+        wavAudio: _pcm16ToWav(pcm),
+      );
+      if (!mounted) return;
+      _applyDraft(draft);
+    } catch (error) {
+      if (mounted) _showError('Speech to Text gagal: $error');
+    } finally {
+      if (mounted) setState(() => _transcribing = false);
+    }
+  }
+
+  void _applyDraft(SttDraft draft) {
+    final model = draft.modelInput;
+    final clinical = draft.clinicalContext;
+    void setNumber(TextEditingController controller, dynamic value) {
+      if (value is num) controller.text = value.toString();
+    }
+
+    setNumber(_systolicController, model['systolic_bp_mmhg']);
+    setNumber(_diastolicController, model['diastolic_bp_mmhg']);
+    setNumber(_heartRateController, model['heart_rate_bpm']);
+    final sugar = model['blood_sugar'];
+    if (sugar is Map) {
+      setNumber(_bloodSugarController, sugar['value']);
+      if (sugar['unit'] is String) _bloodSugarUnit = sugar['unit'] as String;
+    }
+    final temperature = model['body_temperature'];
+    if (temperature is Map) {
+      setNumber(_temperatureController, temperature['value']);
+      if (temperature['unit'] is String) {
+        _temperatureUnit = temperature['unit'] as String;
+      }
+    }
+    setNumber(_weightController, clinical['weight_kg']);
+    setNumber(_heightController, clinical['height_cm']);
+    if (model['previous_complications'] is bool) {
+      _previousComplications = model['previous_complications'] as bool;
+    }
+    if (model['preexisting_diabetes'] is bool) {
+      _preexistingDiabetes = model['preexisting_diabetes'] as bool;
+    }
+    if (model['gestational_diabetes'] is bool) {
+      _gestationalDiabetes = model['gestational_diabetes'] as bool;
+    }
+    if (model['mental_health_indicator'] is bool) {
+      _mentalHealthIndicator = model['mental_health_indicator'] as bool;
+    }
+    if (clinical['severe_headache'] is bool) {
+      _severeHeadache = clinical['severe_headache'] as bool;
+    }
+    if (clinical['visual_disturbance'] is bool) {
+      _visualDisturbance = clinical['visual_disturbance'] as bool;
+    }
+    _urineProtein = switch (clinical['urine_protein']) {
+      'negative' => UrineProtein.negative,
+      'trace' => UrineProtein.trace,
+      'positive' => UrineProtein.positive,
+      _ => _urineProtein,
+    };
+    _sttDraftId = draft.id;
+    _soapNote = draft.soapNote;
+    _sttWarnings = draft.warnings;
+    _reviewConfirmed = false;
+    _notesController.text = [
+      'Transkrip: ${draft.transcript}',
+      if (draft.soapNote['subjective']?.isNotEmpty == true)
+        'S: ${draft.soapNote['subjective']}',
+      if (draft.soapNote['objective']?.isNotEmpty == true)
+        'O: ${draft.soapNote['objective']}',
+      if (draft.soapNote['assessment']?.isNotEmpty == true)
+        'A: ${draft.soapNote['assessment']}',
+      if (draft.soapNote['plan']?.isNotEmpty == true)
+        'P: ${draft.soapNote['plan']}',
+    ].join('\n');
+    setState(() {});
   }
 
   Future<void> _save(Patient patient) async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_reviewConfirmed) {
+      _showError('Periksa data lalu centang konfirmasi bidan sebelum menyimpan.');
+      return;
+    }
 
     final measuredAt = DateTime.now();
     final weight = double.parse(_weightController.text);
     final height = double.parse(_heightController.text);
     final encounter = Encounter(
-      recordId:
-          '${patient.id}-${measuredAt.toUtc().millisecondsSinceEpoch.toString()}',
+      recordId: const Uuid().v4(),
       recordedAt: measuredAt,
       systolic: int.parse(_systolicController.text),
       diastolic: int.parse(_diastolicController.text),
@@ -418,7 +586,7 @@ class _PatientEncounterInputScreenState
       ),
       bodyTemperature: NumericMeasurement(
         value: double.parse(_temperatureController.text),
-        unit: _temperatureUnit,
+        unit: _temperatureUnit.toUpperCase().contains('F') ? 'F' : 'C',
       ),
       weightKg: weight,
       heightCm: height,
@@ -432,18 +600,76 @@ class _PatientEncounterInputScreenState
       visualDisturbance: _visualDisturbance,
       urineProtein: _urineProtein,
       notes: _notesController.text.trim(),
+      sttDraftId: _sttDraftId,
+      soapNote: _reviewedSoapNote(),
     );
 
-    await context.read<PatientState>().addEncounter(patient.id, encounter);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Data kunjungan tersimpan · BMI ${encounter.bmiKgM2.toStringAsFixed(1)}',
+    setState(() => _saving = true);
+    try {
+      await context.read<PatientState>().addEncounter(patient.id, encounter);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Data kunjungan tersimpan · BMI ${encounter.bmiKgM2!.toStringAsFixed(1)}',
+          ),
         ),
-      ),
+      );
+      context.pop();
+    } catch (error) {
+      if (mounted) _showError('Data belum tersimpan: $error');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Uint8List _pcm16ToWav(Uint8List pcm) {
+    final header = ByteData(44);
+    void ascii(int offset, String value) {
+      for (var index = 0; index < value.length; index++) {
+        header.setUint8(offset + index, value.codeUnitAt(index));
+      }
+    }
+
+    ascii(0, 'RIFF');
+    header.setUint32(4, 36 + pcm.length, Endian.little);
+    ascii(8, 'WAVE');
+    ascii(12, 'fmt ');
+    header.setUint32(16, 16, Endian.little);
+    header.setUint16(20, 1, Endian.little);
+    header.setUint16(22, 1, Endian.little);
+    header.setUint32(24, 16000, Endian.little);
+    header.setUint32(28, 32000, Endian.little);
+    header.setUint16(32, 2, Endian.little);
+    header.setUint16(34, 16, Endian.little);
+    ascii(36, 'data');
+    header.setUint32(40, pcm.length, Endian.little);
+    return Uint8List.fromList([...header.buffer.asUint8List(), ...pcm]);
+  }
+
+  Map<String, String> _reviewedSoapNote() {
+    final reviewed = Map<String, String>.from(_soapNote);
+    const prefixes = {
+      'S:': 'subjective',
+      'O:': 'objective',
+      'A:': 'assessment',
+      'P:': 'plan',
+    };
+    for (final rawLine in _notesController.text.split('\n')) {
+      final line = rawLine.trim();
+      for (final entry in prefixes.entries) {
+        if (line.startsWith(entry.key)) {
+          reviewed[entry.value] = line.substring(entry.key.length).trim();
+        }
+      }
+    }
+    return reviewed;
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
-    context.pop();
   }
 }
 

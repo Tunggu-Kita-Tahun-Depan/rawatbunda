@@ -58,16 +58,25 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
     }
 
     setState(() => _saving = true);
-    final patient = await state.addPatient(
-      name: _name.text,
-      ageYears: int.parse(_age.text.trim()),
-      gestationalAgeWeeks: int.parse(_weeks.text.trim()),
-      gravida: int.parse(_gravida.text.trim()),
-      para: int.parse(_para.text.trim()),
-      abortus: int.parse(_abortus.text.trim()),
-    );
-    if (!mounted) return;
-    context.go('/bidan/patients/${patient.id}');
+    try {
+      final patient = await state.addPatient(
+        name: _name.text,
+        ageYears: int.parse(_age.text.trim()),
+        gestationalAgeWeeks: int.parse(_weeks.text.trim()),
+        gravida: int.parse(_gravida.text.trim()),
+        para: int.parse(_para.text.trim()),
+        abortus: int.parse(_abortus.text.trim()),
+      );
+      if (!mounted) return;
+      context.go('/bidan/patients/${patient.id}');
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pasien belum tersimpan: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override

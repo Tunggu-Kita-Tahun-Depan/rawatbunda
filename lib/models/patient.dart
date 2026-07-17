@@ -34,40 +34,44 @@ class Encounter {
   final DateTime recordedAt;
   final int? systolic;
   final int? diastolic;
-  final NumericMeasurement bloodSugar;
-  final NumericMeasurement bodyTemperature;
+  final NumericMeasurement? bloodSugar;
+  final NumericMeasurement? bodyTemperature;
   final double? weightKg;
-  final double heightCm;
-  final double bmiKgM2;
-  final bool previousComplications;
-  final bool preexistingDiabetes;
-  final bool gestationalDiabetes;
-  final bool mentalHealthIndicator;
-  final int heartRateBpm;
+  final double? heightCm;
+  final double? bmiKgM2;
+  final bool? previousComplications;
+  final bool? preexistingDiabetes;
+  final bool? gestationalDiabetes;
+  final bool? mentalHealthIndicator;
+  final int? heartRateBpm;
   final bool severeHeadache;
   final bool visualDisturbance;
   final UrineProtein urineProtein;
   final String notes;
+  final String? sttDraftId;
+  final Map<String, String> soapNote;
 
   const Encounter({
     required this.recordId,
     required this.recordedAt,
     this.systolic,
     this.diastolic,
-    required this.bloodSugar,
-    required this.bodyTemperature,
+    this.bloodSugar,
+    this.bodyTemperature,
     this.weightKg,
-    required this.heightCm,
-    required this.bmiKgM2,
-    required this.previousComplications,
-    required this.preexistingDiabetes,
-    required this.gestationalDiabetes,
-    required this.mentalHealthIndicator,
-    required this.heartRateBpm,
+    this.heightCm,
+    this.bmiKgM2,
+    this.previousComplications,
+    this.preexistingDiabetes,
+    this.gestationalDiabetes,
+    this.mentalHealthIndicator,
+    this.heartRateBpm,
     this.severeHeadache = false,
     this.visualDisturbance = false,
     this.urineProtein = UrineProtein.notTested,
     this.notes = '',
+    this.sttDraftId,
+    this.soapNote = const {},
   });
 
   bool get anyDangerSymptom => severeHeadache || visualDisturbance;
@@ -77,8 +81,34 @@ class Encounter {
   String get measuredAtRfc3339 => recordedAt.toUtc().toIso8601String();
 }
 
+/// Confirmed backend-owned worklist state read from Supabase.
+class DatabasePrioritySnapshot {
+  final String id;
+  final String finalBand;
+  final bool needsVerification;
+  final List<String> reasons;
+  final List<String> missingInputs;
+  final String rulesVersion;
+  final DateTime generatedAt;
+  final double? modelScore;
+  final String? predictionStatus;
+
+  const DatabasePrioritySnapshot({
+    required this.id,
+    required this.finalBand,
+    required this.needsVerification,
+    required this.reasons,
+    required this.missingInputs,
+    required this.rulesVersion,
+    required this.generatedAt,
+    this.modelScore,
+    this.predictionStatus,
+  });
+}
+
 class Patient {
   final String id;
+  final String? pregnancyEpisodeId;
   final String name;
   final int ageYears;
   final int gestationalAgeWeeks;
@@ -92,9 +122,11 @@ class Patient {
 
   /// Chronological, oldest first. Growable: new encounters are appended.
   final List<Encounter> encounters;
+  final DatabasePrioritySnapshot? currentPriority;
 
   Patient({
     required this.id,
+    this.pregnancyEpisodeId,
     required this.name,
     required this.ageYears,
     required this.gestationalAgeWeeks,
@@ -103,6 +135,7 @@ class Patient {
     this.abortus = 0,
     List<String>? history,
     List<Encounter>? encounters,
+    this.currentPriority,
   }) : history = history ?? [],
        encounters = encounters ?? [];
 

@@ -22,6 +22,10 @@ abstract final class Env {
     'DEMO_ROLE',
     defaultValue: 'bidan',
   );
+  static const String backendUrl = String.fromEnvironment(
+    'BACKEND_URL',
+    defaultValue: 'http://10.0.2.2:8081',
+  );
 
   static bool get isSupabaseConfigured =>
       supabaseUrl.isNotEmpty && supabaseKey.isNotEmpty;

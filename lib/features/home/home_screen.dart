@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/constants/priority_rules.dart';
 import '../../core/theme/app_theme.dart';
+import '../../models/patient.dart';
 import '../../models/referral.dart';
+import '../../shared/widgets/priority_band_pill.dart';
 import '../../shared/widgets/rawat_bunda_components.dart';
 import '../../state/auth_state.dart';
+import '../../state/patient_state.dart';
 import '../../state/referral_state.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -15,6 +19,17 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AppAuthState>();
     final referralState = context.watch<ReferralState>();
+    final patientState = context.watch<PatientState>();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => patientState.ensureLoaded(),
+    );
+    final rankedPatients = patientState.patients.toList()
+      ..sort(
+        (a, b) => PriorityRules.compareForWorklist(
+          (a, PriorityRules.assess(a)),
+          (b, PriorityRules.assess(b)),
+        ),
+      );
     final referral = referralState.referral;
     final hasCase =
         referral.step != ReferralStep.arrived &&
@@ -66,6 +81,32 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 10),
             _ActiveReferralCard(referral: referral),
           ],
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Prioritas hari ini',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              TextButton(
+                onPressed: () => context.go('/bidan/patients'),
+                child: const Text('Lihat semua'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (patientState.isLoading && rankedPatients.isEmpty)
+            const Center(child: CircularProgressIndicator())
+          else if (rankedPatients.isEmpty)
+            const InfoNotice(
+              title: 'Belum ada pasien',
+              message: 'Tambah pasien untuk memulai worklist berbasis database.',
+            )
+          else
+            for (final patient in rankedPatients.take(3))
+              _PriorityPatientRow(patient: patient),
           const SizedBox(height: 24),
           Wrap(
             spacing: 12,
@@ -122,6 +163,31 @@ class HomeScreen extends StatelessWidget {
     ReferralStep.accepted => '/bidan/referral/timeline',
     ReferralStep.arrived => '/bidan/home',
   };
+}
+
+class _PriorityPatientRow extends StatelessWidget {
+  const _PriorityPatientRow({required this.patient});
+
+  final Patient patient;
+
+  @override
+  Widget build(BuildContext context) {
+    final assessment = PriorityRules.assess(patient);
+    return Card(
+      child: ListTile(
+        onTap: () => context.go('/bidan/patients/${patient.id}'),
+        title: Text(patient.name),
+        subtitle: Text(
+          assessment.reasons.isEmpty
+              ? 'Kunjungan rutin'
+              : assessment.reasons.first,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: PriorityBandPill(band: assessment.band),
+      ),
+    );
+  }
 }
 
 class _HeroCard extends StatelessWidget {
