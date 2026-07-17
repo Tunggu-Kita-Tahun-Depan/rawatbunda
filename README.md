@@ -1,7 +1,7 @@
 # RawatBunda (Flutter)
 
-RawatBunda is an offline-capable maternal-care workflow prototype for bidan. It
-helps a bidan review patient data, prioritize follow-up, find the nearest
+RawatBunda is an offline-capable maternal-care workflow prototype for midwife. It
+helps a midwife review patient data, prioritize follow-up, find the nearest
 eligible facility, record an externally obtained referral response, and prepare
 reviewed clinical documentation.
 
@@ -23,7 +23,7 @@ signed-in user cannot open another role's screens by typing its URL.
 | **Pasien** | Own summary, monitoring history, schedule, and profile; permanently read-only |
 | **Admin** | Facility reference overview and profile; no clinical actions |
 
-There is no receiving-hospital account. A bidan contacts a hospital outside the
+There is no receiving-hospital account. A midwife contacts a hospital outside the
 app and records the response, channel, source, contact name, time, and decline
 reason. Demo responses are clearly labelled as simulated.
 
@@ -89,13 +89,13 @@ screen.
 4. Select a facility and record the response obtained by phone, WhatsApp, or
    another external channel.
 5. A decline requires a reason, remains in the attempt history, and returns the
-   bidan to the next eligible facility. An acceptance opens the timeline.
+   midwife to the next eligible facility. An acceptance opens the timeline.
 
 ### Typed SOAP/document path
 
-The hackathon-safe P0 path works without an LLM: the bidan types a narrative,
+The hackathon-safe P0 path works without an LLM: the midwife types a narrative,
 confirmed encounter data populates the read-only Objective section, and the
-bidan reviews/edits Assessment and Plan before signing. Signing requires human
+midwife reviews/edits Assessment and Plan before signing. Signing requires human
 confirmation. The signed data can produce separate clinical handoff and
 minimal family-instruction previews.
 
