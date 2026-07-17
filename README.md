@@ -1,122 +1,154 @@
 # RawatBunda (Flutter)
 
-Offline-first maternal emergency referral coordinator — hackathon build.
-See `IBURUJUK_PRD.md` for the full product vision. The demo scope is the
-4-screen referral click-through (intake → facility match → receiving facility → timeline).
+RawatBunda is an offline-capable maternal-care workflow prototype for bidan. It
+helps a bidan review patient data, prioritize follow-up, find the nearest
+eligible facility, record an externally obtained referral response, and prepare
+reviewed clinical documentation.
 
-**All patient and facility data is synthetic/simulated.** This app is decision
-support, not diagnosis, and is not approved for clinical use.
+The current requirements are in `RAWATBUNDA_PRD_V2rev.md`. The implementation
+boundary for this branch is documented in `PERSON_B_IMPLEMENTATION_PLAN.md`.
 
-## Two modes
+> All people, measurements, facilities, and referral responses in the demo are
+> synthetic or simulated. RawatBunda is decision support, not a diagnosis, and
+> is not approved for clinical use.
 
-| Mode | Backend | Login | Multi-device | Setup needed |
-|---|---|---|---|---|
-| **In-memory** (default) | none | no | no | none — just `flutter run` |
-| **Supabase** | PostgreSQL + realtime | yes | yes — referral syncs live across devices | ~10 min, below |
+## Roles and access
 
-The app picks the mode automatically: if the Supabase keys are provided at
-build time it uses Supabase; otherwise everything runs in memory.
+There are exactly three application roles. Routes are guarded by role, so a
+signed-in user cannot open another role's screens by typing its URL.
 
-## Run it (in-memory mode)
+| Role | Current access |
+| --- | --- |
+| **Bidan** | Referral workflow, capable-facility recommendation, response recording, timeline, and reviewed SOAP/document previews |
+| **Pasien** | Own summary, monitoring history, schedule, and profile; permanently read-only |
+| **Admin** | Facility reference overview and profile; no clinical actions |
 
-```sh
+There is no receiving-hospital account. A bidan contacts a hospital outside the
+app and records the response, channel, source, contact name, time, and decline
+reason. Demo responses are clearly labelled as simulated.
+
+## Run locally
+
+The repository contains a public Supabase URL and anon/publishable key as
+build-time defaults. A normal run therefore opens the Supabase login flow:
+
+```powershell
 flutter pub get
-flutter run -d chrome        # or: flutter run -d web-server --web-port 8080
+flutter run -d web-server --web-port 8080
 ```
 
-Tests and lint:
+Open the printed URL in a browser. Never put a Supabase `service_role` key in
+Flutter code or in `--dart-define` values.
 
-```sh
-flutter analyze
-flutter test
+### In-memory demo mode
+
+Clear both Supabase defines to disable login and network access. `DEMO_ROLE`
+accepts `bidan`, `pasien`, or `admin` and defaults to `bidan`.
+
+```powershell
+flutter run -d web-server --web-port 8080 --dart-define=SUPABASE_URL= --dart-define=SUPABASE_KEY= --dart-define=DEMO_ROLE=bidan
+flutter run -d web-server --web-port 8080 --dart-define=SUPABASE_URL= --dart-define=SUPABASE_KEY= --dart-define=DEMO_ROLE=pasien
+flutter run -d web-server --web-port 8080 --dart-define=SUPABASE_URL= --dart-define=SUPABASE_KEY= --dart-define=DEMO_ROLE=admin
 ```
 
-## Supabase setup (multi-device + login)
+The in-memory mode is the hackathon safety net. Data resets when the app is
+restarted and does not sync between devices.
 
-1. Create a free project at [supabase.com](https://supabase.com) (any name, pick a region near you).
-2. In the dashboard: **SQL Editor → New query**, paste the contents of
-   `supabase/migrations/001_init.sql`, and **Run**. This creates the tables,
-   security policies, realtime publication, and demo facilities.
-3. Create demo users: **Authentication → Users → Add user** (e.g.
-   `bidan@demo.id` and `rs@demo.id` with a password). Check "Auto Confirm User".
-4. Get your keys: **Project Settings → API Keys** — copy the **Project URL**
-   and the **publishable** key (`sb_publishable_...`).
-5. Run with the keys:
+## Supabase setup
 
-```sh
-flutter run -d chrome \
-  --dart-define=SUPABASE_URL=https://YOURPROJECT.supabase.co \
-  --dart-define=SUPABASE_KEY=sb_publishable_YOURKEY
+1. Open the Supabase project SQL Editor.
+2. Run `supabase/migrations/001_init.sql`. It creates or updates the tables,
+   synthetic facilities, realtime publication, and role-based RLS policies.
+3. Create and auto-confirm demo users under **Authentication > Users**.
+4. Assign each user a trusted server-side `app_metadata.app_role`. For example:
+
+```sql
+update auth.users
+set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
+  || '{"app_role":"bidan"}'::jsonb
+where email = 'bidan@demo.id';
 ```
 
-Same flags work for `flutter build web`. To demo multi-device: open the app
-on two phones, sign in on both, send a referral from one — it appears on the
-other in about a second.
+Repeat with `pasien` and `admin` for the other demo users. Sign out and sign in
+again after changing a role so the access token contains the new metadata. Do
+not store access roles in editable `user_metadata`.
+
+The migration intentionally permits referral writes only to `bidan`. Pasien is
+read-only at both UI/repository design level in this prototype, while Admin can
+maintain facility reference data through RLS but currently receives a read-only
+screen.
+
+## Implemented Person B flows
+
+### Bidan referral coordination
+
+1. Enter a synthetic patient assessment.
+2. Review the safety flag, which is a transparent rule and not an AI diagnosis.
+3. For urgent cases, show only facilities marked available and PONEK-capable,
+   then order them by distance.
+4. Select a facility and record the response obtained by phone, WhatsApp, or
+   another external channel.
+5. A decline requires a reason, remains in the attempt history, and returns the
+   bidan to the next eligible facility. An acceptance opens the timeline.
+
+### Typed SOAP/document path
+
+The hackathon-safe P0 path works without an LLM: the bidan types a narrative,
+confirmed encounter data populates the read-only Objective section, and the
+bidan reviews/edits Assessment and Plan before signing. Signing requires human
+confirmation. The signed data can produce separate clinical handoff and
+minimal family-instruction previews.
+
+Gemini speech-to-text/extraction is a future adapter, not a runtime dependency
+and not represented as autonomous clinical judgment.
 
 ## Architecture
 
-```
-UI (features/*) ──> ReferralState / AppAuthState (state/)
-                        │
-                        ▼
-            ReferralRepository, FacilityRepository (repositories/)
-              ├── InMemory…   — default, no backend
-              └── Supabase…   — PostgreSQL + realtime + auth
-                                 schema: supabase/migrations/001_init.sql
+```text
+UI (features/*)
+  -> AppAuthState / ReferralState / DocumentationState
+  -> repository interfaces
+     -> InMemory implementations (offline demo)
+     -> Supabase implementations (auth, PostgreSQL, realtime)
 ```
 
-The UI never talks to Supabase directly — only through the repositories.
-That's what makes the two modes interchangeable, and it's where a future
-offline queue (PRD FR-018) or FHIR adapter (FR-022) would plug in.
+The UI does not call Supabase directly. Role resolution uses trusted
+`app_metadata`, repository interfaces keep the offline path replaceable, and
+clinical safety rules remain centralized in
+`lib/core/constants/clinical_rules.dart`.
 
-## UI and navigation
+Key folders:
 
-The mobile-browser interface uses three primary destinations:
-
-- **Beranda** for the current referral and demo shortcuts.
-- **Rujukan** for the guided four-step referral flow.
-- **Profil** for account, connection mode, safety limits, and sign-out.
-
-The blue/white/lime visual system is defined centrally in
-`lib/core/theme/app_theme.dart`. Red remains reserved for clinical danger,
-failures, and destructive actions. See `UI_UX_IMPLEMENTATION_PLAN.md` for the
-implementation scope and verification checklist.
-
-## Project structure
-
-```
-lib/
-├── main.dart                 # entry point; initializes Supabase if configured
-├── app.dart                  # picks repositories by mode, wires providers + router
-├── core/
-│   ├── config/               # env.dart — reads --dart-define keys
-│   ├── constants/            # clinical_rules.dart — safety-flag thresholds (FR-006)
-│   ├── router/               # app_router.dart — routes + auth redirect guard
-│   └── theme/                # app_theme.dart — change seed color here to restyle
-├── data/                     # synthetic_data.dart — demo facilities (in-memory mode)
-├── models/                   # facility.dart, referral.dart — data classes + row (de)serialization
-├── repositories/             # data access: InMemory* and Supabase* implementations
-├── state/                    # referral_state.dart, auth_state.dart (Provider)
-├── features/                 # one folder per screen/role
-│   ├── shell/                # app shell with step navigation + sign-out
-│   ├── intake/               # Screen 1 — bidan intake form + safety flag
-│   ├── facility_match/       # Screen 2 — facility list, sort/filter
-│   ├── receiving/            # Screen 3 — referral summary, accept/decline
-│   ├── timeline/             # Screen 4 — status timeline
-│   ├── auth/                 # login screen (Supabase Auth, FR-001)
-│   └── dashboard/            # STUB — operations dashboard (FR-021, future)
-└── shared/widgets/           # reusable widgets (safety flag banner, ...)
-supabase/
-└── migrations/001_init.sql   # database schema — paste into Supabase SQL Editor
+```text
+lib/core/router/             role-aware routes and redirect guards
+lib/features/pasien_portal/ view-only patient screens
+lib/features/admin/         admin facility overview
+lib/features/facility_match capability-first recommendation UI
+lib/features/receiving/     bidan-recorded external facility response
+lib/features/documentation/ typed narrative, SOAP review, output previews
+lib/models/                 roles, referral provenance, documents, portal data
+lib/repositories/           in-memory and Supabase boundaries
+lib/state/                  authentication, referral, and documentation state
+supabase/migrations/         schema, seed data, RLS, realtime setup
 ```
 
-## Where future pieces plug in
+## Verification
 
-- **Roles/permissions (FR-001):** per-role RLS policies in SQL + role field on users.
-- **Offline queue (FR-018):** a third `ReferralRepository` implementation that
-  wraps Supabase with a local queue.
-- **New screens:** new folder under `features/`, register the route in
-  `core/router/app_router.dart`.
-- **Safety-rule changes:** only touch `core/constants/clinical_rules.dart`.
-- **FHIR/SATUSEHAT (FR-022):** mock `ServiceRequest` preview generated from
-  `ReferralCase.toRow()` — pitch material, not wired yet.
+```powershell
+flutter analyze
+flutter test
+flutter build web --no-pub
+```
+
+Widget and state tests cover role guards, patient read-only behavior, Admin's
+lack of clinical actions, decline/reroute/accept referral history, and SOAP
+human-review requirements.
+
+## Deferred to other workstreams
+
+- Person A's full patient directory, add-patient flow, longitudinal encounter
+  storage, and ML prioritization integration.
+- Production offline queue/conflict resolution and encrypted local storage.
+- Live facility capacity or SATUSEHAT integration.
+- Gemini/STT extraction, prompt validation, and production document storage.
+- Clinical validation, privacy review, audit retention, and deployment hardening.

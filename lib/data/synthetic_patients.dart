@@ -21,17 +21,16 @@ List<Patient> buildSyntheticPatients({DateTime? now}) {
     bool visual = false,
     UrineProtein urine = UrineProtein.notTested,
     String notes = '',
-  }) =>
-      Encounter(
-        recordedAt: t.subtract(Duration(days: daysAgo, hours: 2)),
-        systolic: sys,
-        diastolic: dia,
-        weightKg: weight,
-        severeHeadache: headache,
-        visualDisturbance: visual,
-        urineProtein: urine,
-        notes: notes,
-      );
+  }) => Encounter(
+    recordedAt: t.subtract(Duration(days: daysAgo, hours: 2)),
+    systolic: sys,
+    diastolic: dia,
+    weightKg: weight,
+    severeHeadache: headache,
+    visualDisturbance: visual,
+    urineProtein: urine,
+    notes: notes,
+  );
 
   final special = <Patient>[
     // The demo star: four visits, worsening trend, ends darurat.
@@ -47,13 +46,15 @@ List<Patient> buildSyntheticPatients({DateTime? now}) {
         visit(21, sys: 118, dia: 78, weight: 58.0),
         visit(14, sys: 128, dia: 84, weight: 59.2),
         visit(7, sys: 146, dia: 94, weight: 60.8, urine: UrineProtein.trace),
-        visit(0,
-            sys: 164,
-            dia: 112,
-            weight: 62.5,
-            headache: true,
-            urine: UrineProtein.positive,
-            notes: 'Mengeluh sakit kepala hebat sejak semalam'),
+        visit(
+          0,
+          sys: 164,
+          dia: 112,
+          weight: 62.5,
+          headache: true,
+          urine: UrineProtein.positive,
+          notes: 'Mengeluh sakit kepala hebat sejak semalam',
+        ),
       ],
     ),
     // Session priority: rising BP across two visits, no danger symptom.
@@ -76,9 +77,7 @@ List<Patient> buildSyntheticPatients({DateTime? now}) {
       gravida: 3,
       para: 2,
       history: ['Hipertensi kronis'],
-      encounters: [
-        visit(2, sys: 162, dia: 100, weight: 66.0),
-      ],
+      encounters: [visit(2, sys: 162, dia: 100, weight: 66.0)],
     ),
     // Needs verification: last data too old.
     Patient(
@@ -86,9 +85,7 @@ List<Patient> buildSyntheticPatients({DateTime? now}) {
       name: 'Fitri Handayani',
       ageYears: 27,
       gestationalAgeWeeks: 22,
-      encounters: [
-        visit(45, sys: 112, dia: 72, weight: 54.0),
-      ],
+      encounters: [visit(45, sys: 112, dia: 72, weight: 54.0)],
     ),
     // Needs verification: registered, never examined.
     Patient(
@@ -110,12 +107,30 @@ List<Patient> buildSyntheticPatients({DateTime? now}) {
   ];
 
   const routineNames = [
-    'Ani Suryani', 'Sri Wahyuni', 'Nur Aini', 'Ratna Sari',
-    'Indah Permata', 'Maya Puspita', 'Eka Putri', 'Wulan Dari',
-    'Tri Utami', 'Desi Ratnasari', 'Mega Safitri', 'Putri Ayu',
-    'Rahma Fauziah', 'Intan Nuraini', 'Siska Amelia', 'Vina Oktaviani',
-    'Ayu Andira', 'Nadia Rahmi', 'Bella Anggraini', 'Citra Kirana',
-    'Dina Mariana', 'Erni Susanti', 'Hana Pertiwi', 'Ika Rosdiana',
+    'Ani Suryani',
+    'Sri Wahyuni',
+    'Nur Aini',
+    'Ratna Sari',
+    'Indah Permata',
+    'Maya Puspita',
+    'Eka Putri',
+    'Wulan Dari',
+    'Tri Utami',
+    'Desi Ratnasari',
+    'Mega Safitri',
+    'Putri Ayu',
+    'Rahma Fauziah',
+    'Intan Nuraini',
+    'Siska Amelia',
+    'Vina Oktaviani',
+    'Ayu Andira',
+    'Nadia Rahmi',
+    'Bella Anggraini',
+    'Citra Kirana',
+    'Dina Mariana',
+    'Erni Susanti',
+    'Hana Pertiwi',
+    'Ika Rosdiana',
   ];
 
   final routine = <Patient>[
@@ -128,14 +143,18 @@ List<Patient> buildSyntheticPatients({DateTime? now}) {
         gravida: 1 + i % 3,
         para: i % 3,
         encounters: [
-          visit(14 + i % 6,
-              sys: 104 + (i * 3) % 16,
-              dia: 66 + (i * 2) % 10,
-              weight: 52.0 + i % 12),
-          visit(i % 5,
-              sys: 106 + (i * 3) % 16,
-              dia: 67 + (i * 2) % 10,
-              weight: 52.6 + i % 12),
+          visit(
+            14 + i % 6,
+            sys: 104 + (i * 3) % 16,
+            dia: 66 + (i * 2) % 10,
+            weight: 52.0 + i % 12,
+          ),
+          visit(
+            i % 5,
+            sys: 106 + (i * 3) % 16,
+            dia: 67 + (i * 2) % 10,
+            weight: 52.6 + i % 12,
+          ),
         ],
       ),
   ];

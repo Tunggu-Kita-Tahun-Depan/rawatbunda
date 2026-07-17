@@ -13,8 +13,8 @@ class ReferralState extends ChangeNotifier {
   ReferralState({
     required ReferralRepository referralRepository,
     required FacilityRepository facilityRepository,
-  })  : _referrals = referralRepository,
-        _facilities = facilityRepository {
+  }) : _referrals = referralRepository,
+       _facilities = facilityRepository {
     // Live updates from other devices (or echoes of our own saves).
     _sub = _referrals.watchActiveReferral().listen((remote) {
       // Ignore updates for a different case than the one we hold locally
@@ -61,22 +61,47 @@ class ReferralState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> acknowledge() async {
-    if (referral.step != ReferralStep.sent) return;
-    referral.step = ReferralStep.acknowledged;
-    notifyListeners();
-    await _referrals.save(referral);
-  }
+  Future<void> recordFacilityResponse({
+    required ReferralResponseStatus status,
+    required String contactName,
+    required ContactChannel channel,
+    required String responseSource,
+    required String recordedBy,
+    required bool isSimulated,
+    String? reason,
+  }) async {
+    final facility = referral.selectedFacility;
+    if (facility == null) {
+      throw StateError('Pilih fasilitas sebelum mencatat respons.');
+    }
+    if (status == ReferralResponseStatus.declinedReported &&
+        (reason == null || reason.trim().isEmpty)) {
+      throw ArgumentError('Alasan penolakan wajib dicatat.');
+    }
 
-  Future<void> accept() async {
-    referral.step = ReferralStep.accepted;
-    notifyListeners();
-    await _referrals.save(referral);
-  }
+    referral.contactEvents.add(
+      FacilityContactEvent(
+        facilityName: facility.name,
+        status: status,
+        contactName: contactName.trim(),
+        channel: channel,
+        responseSource: responseSource.trim(),
+        reason: reason?.trim(),
+        recordedAt: DateTime.now(),
+        recordedBy: recordedBy,
+        isSimulated: isSimulated,
+      ),
+    );
 
-  Future<void> decline() async {
-    referral.step = ReferralStep.sent;
-    referral.selectedFacility = null;
+    switch (status) {
+      case ReferralResponseStatus.acceptedReported:
+        referral.step = ReferralStep.accepted;
+      case ReferralResponseStatus.declinedReported:
+        referral.step = ReferralStep.declined;
+        referral.selectedFacility = null;
+      case ReferralResponseStatus.moreInformationRequested:
+        referral.step = ReferralStep.sent;
+    }
     notifyListeners();
     await _referrals.save(referral);
   }

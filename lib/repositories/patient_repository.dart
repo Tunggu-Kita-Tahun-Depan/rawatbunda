@@ -34,8 +34,8 @@ class InMemoryPatientRepository implements PatientRepository {
   int _nextId;
 
   InMemoryPatientRepository({DateTime? now})
-      : _patients = buildSyntheticPatients(now: now),
-        _nextId = 31;
+    : _patients = buildSyntheticPatients(now: now),
+      _nextId = 31;
 
   @override
   Future<List<Patient>> getPatients() async => List.unmodifiable(_patients);

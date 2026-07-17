@@ -67,7 +67,7 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
       abortus: int.parse(_abortus.text.trim()),
     );
     if (!mounted) return;
-    context.go('/patients/${patient.id}');
+    context.go('/bidan/patients/${patient.id}');
   }
 
   @override
@@ -84,8 +84,10 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
             ),
             const SizedBox(width: 4),
             Expanded(
-              child: Text('Tambah pasien',
-                  style: Theme.of(context).textTheme.headlineSmall),
+              child: Text(
+                'Tambah pasien',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
             ),
             const SimulationBadge(compact: true),
           ],
@@ -94,10 +96,9 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
         Text(
           'Data minimum untuk membuat rekam kehamilan baru. '
           'Kunjungan pertama dicatat setelah pasien dipilih.',
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: AppTheme.mutedInk),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: AppTheme.mutedInk),
         ),
         const SizedBox(height: 20),
         Form(
@@ -120,8 +121,9 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
                     child: TextFormField(
                       controller: _age,
                       keyboardType: TextInputType.number,
-                      decoration:
-                          const InputDecoration(labelText: 'Usia (tahun)'),
+                      decoration: const InputDecoration(
+                        labelText: 'Usia (tahun)',
+                      ),
                       validator: (v) => _requiredInt(v, 'usia', 12, 60),
                     ),
                   ),
@@ -131,7 +133,8 @@ class _AddPatientScreenState extends State<AddPatientScreen> {
                       controller: _weeks,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                          labelText: 'Usia kehamilan (mgg)'),
+                        labelText: 'Usia kehamilan (mgg)',
+                      ),
                       validator: (v) =>
                           _requiredInt(v, 'usia kehamilan', 1, 43),
                     ),

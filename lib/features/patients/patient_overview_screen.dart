@@ -54,8 +54,10 @@ class _PatientOverviewScreenState extends State<PatientOverviewScreen> {
             ),
             const SizedBox(width: 4),
             Expanded(
-              child: Text(patient.name,
-                  style: Theme.of(context).textTheme.headlineSmall),
+              child: Text(
+                patient.name,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
             ),
             const SimulationBadge(compact: true),
           ],
@@ -74,8 +76,10 @@ class _PatientOverviewScreenState extends State<PatientOverviewScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Ringkasan kehamilan',
-                  style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                'Ringkasan kehamilan',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -112,15 +116,16 @@ class _PatientOverviewScreenState extends State<PatientOverviewScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.history_rounded,
-                            size: 16, color: AppTheme.mutedInk),
+                        const Icon(
+                          Icons.history_rounded,
+                          size: 16,
+                          color: AppTheme.mutedInk,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             item,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(color: AppTheme.mutedInk),
                           ),
                         ),
@@ -137,8 +142,10 @@ class _PatientOverviewScreenState extends State<PatientOverviewScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Mengapa prioritas ini',
-                    style: Theme.of(context).textTheme.titleSmall),
+                Text(
+                  'Mengapa prioritas ini',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
                 const SizedBox(height: 10),
                 for (final reason in assessment.reasons)
                   Padding(
@@ -146,12 +153,16 @@ class _PatientOverviewScreenState extends State<PatientOverviewScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.arrow_right_rounded,
-                            color: AppTheme.primaryDark),
+                        const Icon(
+                          Icons.arrow_right_rounded,
+                          color: AppTheme.primaryDark,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
-                          child: Text(reason,
-                              style: Theme.of(context).textTheme.bodyMedium),
+                          child: Text(
+                            reason,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                         ),
                       ],
                     ),
@@ -160,10 +171,9 @@ class _PatientOverviewScreenState extends State<PatientOverviewScreen> {
                 Text(
                   'Aturan ${assessment.rulesVersion} · pendukung keputusan, '
                   'bukan diagnosis',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: AppTheme.mutedInk),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppTheme.mutedInk),
                 ),
               ],
             ),
@@ -174,13 +184,16 @@ class _PatientOverviewScreenState extends State<PatientOverviewScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Riwayat kunjungan',
-                  style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                'Riwayat kunjungan',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 10),
               if (visits.isEmpty)
                 const InfoNotice(
                   title: 'Belum ada kunjungan',
-                  message: 'Catat kunjungan pertama untuk mulai memantau '
+                  message:
+                      'Catat kunjungan pertama untuk mulai memantau '
                       'tren pasien ini.',
                 )
               else
@@ -190,7 +203,7 @@ class _PatientOverviewScreenState extends State<PatientOverviewScreen> {
         ),
         const SizedBox(height: 20),
         FilledButton.icon(
-          onPressed: () => context.go('/referral/intake'),
+          onPressed: () => context.go('/bidan/referral/intake'),
           icon: const Icon(Icons.sync_alt_rounded),
           label: const Text('Mulai rujukan'),
         ),
@@ -235,22 +248,22 @@ class _VisitRow extends StatelessWidget {
         children: [
           Text(
             relativeDay(visit.recordedAt),
-            style: Theme.of(context)
-                .textTheme
-                .labelMedium
-                ?.copyWith(color: AppTheme.primaryDark),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: AppTheme.primaryDark),
           ),
           const SizedBox(height: 4),
-          Text(details.join(' · '),
-              style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            details.join(' · '),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           if (visit.notes.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
               visit.notes,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: AppTheme.mutedInk),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: AppTheme.mutedInk),
             ),
           ],
         ],

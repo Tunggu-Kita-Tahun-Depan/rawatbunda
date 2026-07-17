@@ -10,9 +10,7 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Operations Dashboard')),
-      body: const Center(
-        child: Text('Dashboard — future scope (PRD FR-021)'),
-      ),
+      body: const Center(child: Text('Dashboard — future scope (PRD FR-021)')),
     );
   }
 }

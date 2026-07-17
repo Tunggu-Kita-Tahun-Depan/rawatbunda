@@ -8,15 +8,14 @@ void main() {
   final now = DateTime(2026, 7, 17, 9);
 
   Patient patientWith(List<Encounter> encounters) => Patient(
-        id: 'test',
-        name: 'Uji Coba',
-        ageYears: 28,
-        gestationalAgeWeeks: 30,
-        encounters: encounters,
-      );
+    id: 'test',
+    name: 'Uji Coba',
+    ageYears: 28,
+    gestationalAgeWeeks: 30,
+    encounters: encounters,
+  );
 
-  Encounter visit(int daysAgo,
-          {int? sys, int? dia, bool headache = false}) =>
+  Encounter visit(int daysAgo, {int? sys, int? dia, bool headache = false}) =>
       Encounter(
         recordedAt: now.subtract(Duration(days: daysAgo)),
         systolic: sys,
@@ -25,17 +24,19 @@ void main() {
       );
 
   group('PriorityRules.assess', () {
-    test('severe BP plus danger symptom is darurat with explainable reasons',
-        () {
-      final result = PriorityRules.assess(
-        patientWith([visit(0, sys: 165, dia: 100, headache: true)]),
-        now: now,
-      );
-      expect(result.band, PriorityBand.darurat);
-      expect(result.reasons, isNotEmpty);
-      expect(result.reasons.first, contains('165/100'));
-      expect(result.rulesVersion, isNotEmpty);
-    });
+    test(
+      'severe BP plus danger symptom is darurat with explainable reasons',
+      () {
+        final result = PriorityRules.assess(
+          patientWith([visit(0, sys: 165, dia: 100, headache: true)]),
+          now: now,
+        );
+        expect(result.band, PriorityBand.darurat);
+        expect(result.reasons, isNotEmpty);
+        expect(result.reasons.first, contains('165/100'));
+        expect(result.rulesVersion, isNotEmpty);
+      },
+    );
 
     test('severe BP without a danger symptom is prioritas, not darurat', () {
       final result = PriorityRules.assess(
@@ -58,10 +59,7 @@ void main() {
     });
 
     test('missing blood pressure needs verification, never low risk', () {
-      final result = PriorityRules.assess(
-        patientWith([visit(0)]),
-        now: now,
-      );
+      final result = PriorityRules.assess(patientWith([visit(0)]), now: now);
       expect(result.needsVerification, isTrue);
       expect(result.reasons, isNotEmpty);
     });
@@ -100,13 +98,11 @@ void main() {
     test('the demo star has four dated visits with a worsening trend', () {
       final star = patients.firstWhere((p) => p.name == 'Siti Rahayu');
       expect(star.encounters, hasLength(4));
-      final systolics =
-          star.encounters.map((e) => e.systolic!).toList(growable: false);
+      final systolics = star.encounters
+          .map((e) => e.systolic!)
+          .toList(growable: false);
       expect(systolics, [118, 128, 146, 164]);
-      expect(
-        PriorityRules.assess(star, now: now).band,
-        PriorityBand.darurat,
-      );
+      expect(PriorityRules.assess(star, now: now).band, PriorityBand.darurat);
     });
 
     test('worklist ordering puts darurat first', () {

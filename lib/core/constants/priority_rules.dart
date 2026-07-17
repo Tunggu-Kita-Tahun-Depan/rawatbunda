@@ -93,23 +93,28 @@ abstract final class PriorityRules {
       // 2. Session-priority signals, strongest first.
       final sys = e.systolic ?? 0;
       final dia = e.diastolic ?? 0;
-      final severeBp = sys >= ClinicalRules.severeSystolicThreshold ||
+      final severeBp =
+          sys >= ClinicalRules.severeSystolicThreshold ||
           dia >= ClinicalRules.severeDiastolicThreshold;
-      final elevatedBp = sys >= elevatedSystolicThreshold ||
-          dia >= elevatedDiastolicThreshold;
+      final elevatedBp =
+          sys >= elevatedSystolicThreshold || dia >= elevatedDiastolicThreshold;
 
       if (severeBp) {
         band = PriorityBand.prioritas;
-        reasons.add('TD $sys/$dia mmHg pada ambang berat — '
-            'ulangi pengukuran sesi ini');
+        reasons.add(
+          'TD $sys/$dia mmHg pada ambang berat — '
+          'ulangi pengukuran sesi ini',
+        );
       } else if (e.anyDangerSymptom) {
         band = PriorityBand.prioritas;
         reasons.add('Gejala bahaya dilaporkan — periksa pada sesi ini');
       } else if (elevatedBp) {
         band = PriorityBand.prioritas;
-        reasons.add('TD $sys/$dia mmHg ≥ '
-            '$elevatedSystolicThreshold/$elevatedDiastolicThreshold — '
-            'tinjau lebih awal');
+        reasons.add(
+          'TD $sys/$dia mmHg ≥ '
+          '$elevatedSystolicThreshold/$elevatedDiastolicThreshold — '
+          'tinjau lebih awal',
+        );
       }
 
       if (e.urineProtein == UrineProtein.positive) {
@@ -137,8 +142,9 @@ abstract final class PriorityRules {
   /// Meaningful BP rise between the last two measured visits (PRD §9.3:
   /// change from the patient's own previous verified values).
   static String? _bloodPressureRise(Patient patient) {
-    final measured =
-        patient.encounters.where((e) => e.hasBloodPressure).toList();
+    final measured = patient.encounters
+        .where((e) => e.hasBloodPressure)
+        .toList();
     if (measured.length < 2) return null;
     final prev = measured[measured.length - 2];
     final last = measured.last;

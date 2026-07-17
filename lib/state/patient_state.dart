@@ -8,7 +8,7 @@ import '../repositories/patient_repository.dart';
 /// Same pattern as ReferralState: screens talk to this notifier, never to a
 /// backend directly, so swapping the repository later costs nothing.
 class PatientState extends ChangeNotifier {
-  PatientState({required this._repository});
+  PatientState(this._repository);
 
   final PatientRepository _repository;
 

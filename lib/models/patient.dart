@@ -59,11 +59,10 @@ class Patient {
     this.abortus = 0,
     List<String>? history,
     List<Encounter>? encounters,
-  })  : history = history ?? [],
-        encounters = encounters ?? [];
+  }) : history = history ?? [],
+       encounters = encounters ?? [];
 
-  Encounter? get latestEncounter =>
-      encounters.isEmpty ? null : encounters.last;
+  Encounter? get latestEncounter => encounters.isEmpty ? null : encounters.last;
 
   /// G2P1A0-style summary used across ANC records in Indonesia.
   String get gpaSummary => 'G$gravida P$para A$abortus';

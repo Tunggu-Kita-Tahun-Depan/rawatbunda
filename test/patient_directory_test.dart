@@ -14,12 +14,15 @@ Future<void> openDirectory(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('Pasien tab shows a searchable patient directory',
-      (tester) async {
+  testWidgets('Pasien tab shows a searchable patient directory', (
+    tester,
+  ) async {
     await openDirectory(tester);
 
-    expect(find.text('Cari dan pilih pasien untuk memulai kunjungan'),
-        findsOneWidget);
+    expect(
+      find.text('Cari dan pilih pasien untuk memulai kunjungan'),
+      findsOneWidget,
+    );
     expect(find.text('Tambah pasien'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'siti');
@@ -28,8 +31,9 @@ void main() {
     expect(find.text('Dewi Lestari'), findsNothing);
   });
 
-  testWidgets('patient overview shows band, reasons, and visit history',
-      (tester) async {
+  testWidgets('patient overview shows band, reasons, and visit history', (
+    tester,
+  ) async {
     await openDirectory(tester);
 
     await tester.enterText(find.byType(TextField).first, 'siti');
@@ -56,19 +60,26 @@ void main() {
     expect(find.text('Riwayat kunjungan'), findsOneWidget);
   });
 
-  testWidgets('Tambah pasien saves a new record and opens its overview',
-      (tester) async {
+  testWidgets('Tambah pasien saves a new record and opens its overview', (
+    tester,
+  ) async {
     await openDirectory(tester);
 
     await tester.tap(find.text('Tambah pasien'));
     await tester.pumpAndSettle();
 
     await tester.enterText(
-        find.widgetWithText(TextFormField, 'Nama lengkap'), 'Pasien Baru');
+      find.widgetWithText(TextFormField, 'Nama lengkap'),
+      'Pasien Baru',
+    );
     await tester.enterText(
-        find.widgetWithText(TextFormField, 'Usia (tahun)'), '25');
+      find.widgetWithText(TextFormField, 'Usia (tahun)'),
+      '25',
+    );
     await tester.enterText(
-        find.widgetWithText(TextFormField, 'Usia kehamilan (mgg)'), '16');
+      find.widgetWithText(TextFormField, 'Usia kehamilan (mgg)'),
+      '16',
+    );
     await tester.tap(find.text('Simpan pasien'));
     await tester.pumpAndSettle();
 
@@ -89,11 +100,17 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(
-        find.widgetWithText(TextFormField, 'Nama lengkap'), 'Siti Rahayu');
+      find.widgetWithText(TextFormField, 'Nama lengkap'),
+      'Siti Rahayu',
+    );
     await tester.enterText(
-        find.widgetWithText(TextFormField, 'Usia (tahun)'), '30');
+      find.widgetWithText(TextFormField, 'Usia (tahun)'),
+      '30',
+    );
     await tester.enterText(
-        find.widgetWithText(TextFormField, 'Usia kehamilan (mgg)'), '20');
+      find.widgetWithText(TextFormField, 'Usia kehamilan (mgg)'),
+      '20',
+    );
     await tester.tap(find.text('Simpan pasien'));
     await tester.pumpAndSettle();
 

@@ -15,22 +15,22 @@ class PriorityBandPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (band) {
       PriorityBand.darurat => const StatusPill(
-          label: 'Darurat',
-          backgroundColor: Color(0xFFFBE9E9),
-          foregroundColor: AppTheme.danger,
-          icon: Icons.priority_high_rounded,
-        ),
+        label: 'Darurat',
+        backgroundColor: Color(0xFFFBE9E9),
+        foregroundColor: AppTheme.danger,
+        icon: Icons.priority_high_rounded,
+      ),
       PriorityBand.prioritas => const StatusPill(
-          label: 'Prioritas',
-          backgroundColor: Color(0xFFFFF3D6),
-          foregroundColor: Color(0xFF8A5A00),
-          icon: Icons.schedule_rounded,
-        ),
+        label: 'Prioritas',
+        backgroundColor: Color(0xFFFFF3D6),
+        foregroundColor: Color(0xFF8A5A00),
+        icon: Icons.schedule_rounded,
+      ),
       PriorityBand.rutin => const StatusPill(
-          label: 'Rutin',
-          backgroundColor: AppTheme.primarySoft,
-          foregroundColor: AppTheme.primaryDark,
-        ),
+        label: 'Rutin',
+        backgroundColor: AppTheme.primarySoft,
+        foregroundColor: AppTheme.primaryDark,
+      ),
     };
   }
 }

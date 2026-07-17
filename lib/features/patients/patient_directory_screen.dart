@@ -34,10 +34,13 @@ class _PatientDirectoryScreenState extends State<PatientDirectoryScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<PatientState>();
     final needle = _query.trim().toLowerCase();
-    final patients = state.patients
-        .where((p) => needle.isEmpty || p.name.toLowerCase().contains(needle))
-        .toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+    final patients =
+        state.patients
+            .where(
+              (p) => needle.isEmpty || p.name.toLowerCase().contains(needle),
+            )
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -60,7 +63,7 @@ class _PatientDirectoryScreenState extends State<PatientDirectoryScreen> {
           ),
           const SizedBox(height: 12),
           FilledButton.icon(
-            onPressed: () => context.push('/patients/add'),
+            onPressed: () => context.push('/bidan/patients/add'),
             icon: const Icon(Icons.person_add_alt_rounded),
             label: const Text('Tambah pasien'),
           ),
@@ -69,18 +72,19 @@ class _PatientDirectoryScreenState extends State<PatientDirectoryScreen> {
             child: state.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : patients.isEmpty
-                    ? const InfoNotice(
-                        title: 'Tidak ditemukan',
-                        message: 'Tidak ada pasien dengan nama itu. '
-                            'Periksa ejaan atau tambah pasien baru.',
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        itemCount: patients.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) =>
-                            _PatientCard(patient: patients[index]),
-                      ),
+                ? const InfoNotice(
+                    title: 'Tidak ditemukan',
+                    message:
+                        'Tidak ada pasien dengan nama itu. '
+                        'Periksa ejaan atau tambah pasien baru.',
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    itemCount: patients.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) =>
+                        _PatientCard(patient: patients[index]),
+                  ),
           ),
         ],
       ),
@@ -103,7 +107,7 @@ class _PatientCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => context.push('/patients/${patient.id}'),
+        onTap: () => context.push('/bidan/patients/${patient.id}'),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -116,26 +120,26 @@ class _PatientCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(patient.name,
-                        style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      patient.name,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       '${patient.ageYears} th · ${patient.gpaSummary} · '
                       '${patient.gestationalAgeWeeks} mgg',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: AppTheme.mutedInk),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: AppTheme.mutedInk),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       latest == null
                           ? 'Belum ada kunjungan'
                           : 'Kunjungan terakhir ${relativeDay(latest.recordedAt)}',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: AppTheme.mutedInk),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: AppTheme.mutedInk),
                     ),
                   ],
                 ),
