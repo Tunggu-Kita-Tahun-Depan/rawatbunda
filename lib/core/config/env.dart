@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Build-time configuration.
 ///
 /// The Supabase keys below are baked in as defaults so a plain
@@ -22,6 +24,21 @@ abstract final class Env {
     'DEMO_ROLE',
     defaultValue: 'bidan',
   );
+  static const String _backendUrlOverride = String.fromEnvironment(
+    'BACKEND_URL',
+  );
+
+  /// Resolve the local backend without requiring a dart-define on common
+  /// development targets. A physical device still needs BACKEND_URL because
+  /// it cannot discover the development computer's LAN address reliably.
+  static String get backendUrl {
+    if (_backendUrlOverride.isNotEmpty) return _backendUrlOverride;
+    if (kIsWeb) {
+      final host = Uri.base.host.isEmpty ? '127.0.0.1' : Uri.base.host;
+      return Uri(scheme: 'http', host: host, port: 8081).toString();
+    }
+    return 'http://10.0.2.2:8081';
+  }
 
   static bool get isSupabaseConfigured =>
       supabaseUrl.isNotEmpty && supabaseKey.isNotEmpty;

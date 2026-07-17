@@ -48,6 +48,21 @@ abstract final class PriorityRules {
 
   static PriorityAssessment assess(Patient patient, {DateTime? now}) {
     final at = now ?? DateTime.now();
+    final stored = patient.currentPriority;
+    if (stored != null) {
+      final band = switch (stored.finalBand) {
+        'darurat' => PriorityBand.darurat,
+        'prioritas' => PriorityBand.prioritas,
+        _ => PriorityBand.rutin,
+      };
+      return PriorityAssessment(
+        band: band,
+        needsVerification: stored.needsVerification,
+        reasons: List.unmodifiable(stored.reasons),
+        rulesVersion: stored.rulesVersion,
+        generatedAt: stored.generatedAt,
+      );
+    }
     final e = patient.latestEncounter;
     final reasons = <String>[];
     var needsVerification = false;

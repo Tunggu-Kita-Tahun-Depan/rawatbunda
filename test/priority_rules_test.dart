@@ -17,9 +17,20 @@ void main() {
 
   Encounter visit(int daysAgo, {int? sys, int? dia, bool headache = false}) =>
       Encounter(
+        recordId: 'test-$daysAgo',
         recordedAt: now.subtract(Duration(days: daysAgo)),
         systolic: sys,
         diastolic: dia,
+        bloodSugar: const NumericMeasurement(value: 92, unit: 'mg/dL'),
+        bodyTemperature: const NumericMeasurement(value: 36.7, unit: '°C'),
+        weightKg: 56,
+        heightCm: 158,
+        bmiKgM2: calculateBmiKgM2(weightKg: 56, heightCm: 158),
+        previousComplications: false,
+        preexistingDiabetes: false,
+        gestationalDiabetes: false,
+        mentalHealthIndicator: false,
+        heartRateBpm: 84,
         severeHeadache: headache,
       );
 
@@ -138,10 +149,32 @@ void main() {
       final repo = InMemoryPatientRepository(now: now);
       await repo.addEncounter(
         'p05',
-        Encounter(recordedAt: now, systolic: 118, diastolic: 76),
+        Encounter(
+          recordId: 'manual-test',
+          recordedAt: now,
+          systolic: 118,
+          diastolic: 76,
+          bloodSugar: const NumericMeasurement(value: 92, unit: 'mg/dL'),
+          bodyTemperature: const NumericMeasurement(value: 36.7, unit: '°C'),
+          weightKg: 56,
+          heightCm: 158,
+          bmiKgM2: calculateBmiKgM2(weightKg: 56, heightCm: 158),
+          previousComplications: false,
+          preexistingDiabetes: false,
+          gestationalDiabetes: false,
+          mentalHealthIndicator: false,
+          heartRateBpm: 84,
+        ),
       );
       final patient = await repo.getById('p05');
       expect(patient!.encounters, hasLength(1));
+    });
+
+    test('BMI helper calculates kg/m2 from weight and height', () {
+      expect(
+        calculateBmiKgM2(weightKg: 56, heightCm: 158),
+        closeTo(22.43, 0.01),
+      );
     });
   });
 }

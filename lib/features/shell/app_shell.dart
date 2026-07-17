@@ -6,9 +6,8 @@ import '../../models/app_profile.dart';
 
 /// Primary navigation for the bidan-facing prototype.
 ///
-/// Referral steps live inside one tab so the bottom navigation stays simple
-/// and the workflow itself remains guided rather than acting like four
-/// unrelated app sections.
+/// Patient work stays centered in one tab; referral steps are launched from a
+/// selected patient rather than living as a separate global destination.
 class AppShell extends StatelessWidget {
   const AppShell({
     super.key,
@@ -84,11 +83,6 @@ class AppShell extends StatelessWidget {
             icon: Icon(Icons.groups_outlined),
             selectedIcon: Icon(Icons.groups_rounded),
             label: 'Pasien',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.sync_alt_rounded),
-            selectedIcon: Icon(Icons.sync_alt_rounded),
-            label: 'Rujukan',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),

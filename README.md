@@ -99,8 +99,31 @@ midwife reviews/edits Assessment and Plan before signing. Signing requires human
 confirmation. The signed data can produce separate clinical handoff and
 minimal family-instruction previews.
 
-Gemini speech-to-text/extraction is a future adapter, not a runtime dependency
-and not represented as autonomous clinical judgment.
+Speech-to-text is integrated as a protected draft workflow. Audio is transcribed
+and converted into SOAP plus structured fields, but nothing becomes a confirmed
+encounter until the bidan reviews the form and explicitly confirms it. The
+backend then writes the encounter, validates and stores the ML result, and
+creates the deterministic operational priority snapshot read by Flutter.
+
+Backend runtime variables stay on the server only:
+
+```text
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+IBURUJUK_MODEL_SHA256
+GROQ_API_KEY
+CORS_ALLOWED_ORIGINS
+```
+
+For local development, Flutter Web derives `BACKEND_URL` from the browser host
+and port `8081`, while an Android emulator defaults to
+`http://10.0.2.2:8081`. A physical device still needs the development
+computer's LAN address, for example
+`--dart-define=BACKEND_URL=http://192.168.1.10:8081`. A deployed Web build must
+use an HTTPS backend override. Localhost Web origins are accepted by default;
+set `CORS_ALLOWED_ORIGINS` to a comma-separated list of additional trusted Web
+origins.
 
 ## Architecture
 

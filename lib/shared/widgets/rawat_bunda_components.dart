@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 import '../../core/theme/app_theme.dart';
 
@@ -169,27 +170,41 @@ class StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 15, color: foregroundColor),
-            const SizedBox(width: 5),
-          ],
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium?.copyWith(color: foregroundColor),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final iconSpace = icon == null ? 0.0 : 20.0;
+        final labelMaxWidth = constraints.hasBoundedWidth
+            ? math.max(0.0, constraints.maxWidth - 20 - iconSpace)
+            : 220.0;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(999),
           ),
-        ],
-      ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 15, color: foregroundColor),
+                const SizedBox(width: 5),
+              ],
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: labelMaxWidth),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelMedium?.copyWith(color: foregroundColor),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

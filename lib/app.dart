@@ -11,6 +11,7 @@ import 'repositories/facility_repository.dart';
 import 'repositories/patient_repository.dart';
 import 'repositories/patient_portal_repository.dart';
 import 'repositories/referral_repository.dart';
+import 'services/clinical_backend_client.dart';
 import 'state/auth_state.dart';
 import 'state/documentation_state.dart';
 import 'state/patient_state.dart';
@@ -38,12 +39,14 @@ class _RawatBundaAppState extends State<RawatBundaApp> {
   late final PatientState _patientState;
   late final DocumentationState _documentationState;
   late final GoRouter _router;
+  late final ClinicalBackendClient _backendClient;
 
   @override
   void initState() {
     super.initState();
     final supabase = widget.useSupabase ?? Env.isSupabaseConfigured;
     _auth = AppAuthState(authEnabled: supabase, demoRole: widget.demoRole);
+    _backendClient = ClinicalBackendClient();
     _referralState = ReferralState(
       referralRepository: supabase
           ? SupabaseReferralRepository()
@@ -52,11 +55,13 @@ class _RawatBundaAppState extends State<RawatBundaApp> {
           ? SupabaseFacilityRepository()
           : InMemoryFacilityRepository(),
     );
-    // Patients are in-memory in both modes for now; a Supabase-backed
-    // repository can swap in here without touching any screen.
-    _patientState = PatientState(InMemoryPatientRepository());
+    _patientState = PatientState(
+      supabase
+          ? SupabasePatientRepository(_backendClient)
+          : InMemoryPatientRepository(),
+    );
     _documentationState = DocumentationState(InMemoryDocumentRepository());
-    _router = createRouter(_auth);
+    _router = createRouter(_auth, referralState: _referralState);
   }
 
   @override
@@ -65,6 +70,7 @@ class _RawatBundaAppState extends State<RawatBundaApp> {
     _referralState.dispose();
     _patientState.dispose();
     _documentationState.dispose();
+    _backendClient.dispose();
     super.dispose();
   }
 
@@ -76,6 +82,7 @@ class _RawatBundaAppState extends State<RawatBundaApp> {
         ChangeNotifierProvider.value(value: _referralState),
         ChangeNotifierProvider.value(value: _patientState),
         ChangeNotifierProvider.value(value: _documentationState),
+        Provider<ClinicalBackendClient>.value(value: _backendClient),
         Provider<PatientPortalRepository>.value(
           value: InMemoryPatientPortalRepository(),
         ),

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iburujuk-ml"
+version = "0.5.0"
+description = "Fail-closed RawatBunda maternal-risk backend package"
+requires-python = ">=3.14,<3.15"
+dynamic = ["dependencies"]
+
+[project.scripts]
+rawatbunda-ml-backend = "iburujuk_ml.backend:main"
+rawatbunda-model-service = "iburujuk_ml.api:main"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["iburujuk_ml*"]

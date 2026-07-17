@@ -1,0 +1,5 @@
+-r requirements.txt
+httpcore2==2.7.0
+httpx2==2.7.0
+jsonschema==4.25.1
+truststore==0.10.4

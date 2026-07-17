@@ -40,7 +40,12 @@ class _PatientDirectoryScreenState extends State<PatientDirectoryScreen> {
               (p) => needle.isEmpty || p.name.toLowerCase().contains(needle),
             )
             .toList()
-          ..sort((a, b) => a.name.compareTo(b.name));
+          ..sort(
+            (a, b) => PriorityRules.compareForWorklist(
+              (a, PriorityRules.assess(a)),
+              (b, PriorityRules.assess(b)),
+            ),
+          );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),

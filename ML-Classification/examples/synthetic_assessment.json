@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "request_id": "demo-evaluation-001",
+  "patient_id": "10000000-0000-4000-8000-000000000001",
+  "pregnancy_episode_id": "20000000-0000-4000-8000-000000000001",
+  "encounter_id": "30000000-0000-4000-8000-000000000001",
+  "model_input": {
+    "measured_at": "2026-07-17T15:30:00+07:00",
+    "age_years": 29,
+    "systolic_bp_mmhg": 164,
+    "diastolic_bp_mmhg": 112,
+    "blood_sugar": {
+      "value": 7.0,
+      "unit": "mmol/L"
+    },
+    "body_temperature": {
+      "value": 37.0,
+      "unit": "C"
+    },
+    "bmi_kg_m2": 26.4,
+    "previous_complications": true,
+    "preexisting_diabetes": false,
+    "gestational_diabetes": false,
+    "mental_health_indicator": false,
+    "heart_rate_bpm": 92
+  }
+}

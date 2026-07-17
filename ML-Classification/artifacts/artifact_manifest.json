@@ -1,0 +1,47 @@
+{
+  "artifact_file": "maternal_risk_model.joblib",
+  "artifact_sha256": "41ae14d4a6eacec655d4fc899d49ce2275afbae8f18156011092f61ad5f8a432",
+  "artifact_version": 2,
+  "bootstrap_iterations": 1000,
+  "created_at_utc": "2026-07-17T07:29:02.376965Z",
+  "dataset_sha256": "b152d94c6a8a9de9c71ec1692d59c03db50ef681fe6366155d4fbe5815ea80ba",
+  "features": [
+    "Age",
+    "Systolic BP",
+    "Diastolic",
+    "BS",
+    "Body Temp",
+    "BMI",
+    "Previous Complications",
+    "Preexisting Diabetes",
+    "Gestational Diabetes",
+    "Mental Health",
+    "Heart Rate"
+  ],
+  "minimum_recall": 0.95,
+  "model_name": "l2_regularized_logistic_regression",
+  "model_params": {
+    "C": 1.0,
+    "class_weight": null,
+    "max_iter": 5000,
+    "penalty": "l2",
+    "solver": "lbfgs",
+    "tol": 1e-08
+  },
+  "model_version": "maternal-risk-shadow-v2",
+  "random_state": 42,
+  "selected_threshold": 0.6729164699797664,
+  "software": {
+    "joblib": "1.5.2",
+    "numpy": "2.3.4",
+    "pandas": "3.0.2",
+    "python": "3.14.0",
+    "python_dateutil": "2.9.0.post0",
+    "scikit_learn": "1.7.2",
+    "scipy": "1.16.3",
+    "threadpoolctl": "3.6.0",
+    "tzdata": "2026.1"
+  },
+  "source_code_sha256": "0bc77c437df299a1683b63ef18d458feafc66fcec3e2bb6d0ab94a03248b40f2",
+  "split_sha256": "f6590f9bdecce8e3c245e30263b206e5d4b4ee9bd2027a38c142e4acad5576f1"
+}

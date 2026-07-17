@@ -20,6 +20,9 @@ class ReferralState extends ChangeNotifier {
       // Ignore updates for a different case than the one we hold locally
       // (e.g. the old case arriving after a reset).
       if (referral.id != null && remote.id != referral.id) return;
+      if (remote.contactEvents.isEmpty && referral.contactEvents.isNotEmpty) {
+        remote.contactEvents.addAll(referral.contactEvents);
+      }
       referral = remote;
       notifyListeners();
     });
@@ -70,6 +73,11 @@ class ReferralState extends ChangeNotifier {
     required bool isSimulated,
     String? reason,
   }) async {
+    if (referral.step == ReferralStep.accepted ||
+        referral.step == ReferralStep.arrived) {
+      throw StateError('Respons faskes untuk rujukan ini sudah dicatat.');
+    }
+
     final facility = referral.selectedFacility;
     if (facility == null) {
       throw StateError('Pilih fasilitas sebelum mencatat respons.');

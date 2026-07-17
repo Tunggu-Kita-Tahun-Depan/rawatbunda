@@ -48,23 +48,40 @@ class SupabaseReferralRepository implements ReferralRepository {
   SupabaseClient get _client => Supabase.instance.client;
   StreamSubscription<List<Map<String, dynamic>>>? _sub;
   final _controller = StreamController<ReferralCase>.broadcast();
+  bool _includeContactEvents = true;
 
   @override
   Future<ReferralCase> save(ReferralCase referral) async {
+    try {
+      return await _save(referral, includeContactEvents: _includeContactEvents);
+    } on PostgrestException catch (error) {
+      if (!_isMissingContactEventsColumn(error)) rethrow;
+      _includeContactEvents = false;
+      return _save(referral, includeContactEvents: false);
+    }
+  }
+
+  Future<ReferralCase> _save(
+    ReferralCase referral, {
+    required bool includeContactEvents,
+  }) async {
+    final row = referral.toRow(includeContactEvents: includeContactEvents);
     if (referral.id == null) {
-      final row = await _client
+      final saved = await _client
           .from('referral_cases')
-          .insert(referral.toRow())
+          .insert(row)
           .select()
           .single();
-      referral.id = row['id'] as String;
+      referral.id = saved['id'] as String;
     } else {
-      await _client
-          .from('referral_cases')
-          .update(referral.toRow())
-          .eq('id', referral.id!);
+      await _client.from('referral_cases').update(row).eq('id', referral.id!);
     }
     return referral;
+  }
+
+  bool _isMissingContactEventsColumn(PostgrestException error) {
+    final message = error.message.toLowerCase();
+    return error.code == 'PGRST204' && message.contains('contact_events');
   }
 
   @override

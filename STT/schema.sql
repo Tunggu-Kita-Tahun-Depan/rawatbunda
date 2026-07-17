@@ -1,0 +1,9 @@
+-- The standalone `rekam_medis` table is retired.
+--
+-- Apply the versioned Supabase migrations instead:
+--   001_init.sql
+--   002_ml_backend.sql
+--   003_clinical_workflow.sql
+--
+-- Migration 003 separates unconfirmed STT drafts from bidan-confirmed
+-- encounters, ML predictions, and operational priority snapshots.

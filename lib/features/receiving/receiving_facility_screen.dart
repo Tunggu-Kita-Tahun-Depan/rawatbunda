@@ -59,9 +59,9 @@ class _ReceivingFacilityScreenState extends State<ReceivingFacilityScreen> {
       if (!mounted) return;
       switch (_status) {
         case ReferralResponseStatus.acceptedReported:
-          context.go('/referral/timeline');
+          context.go('/bidan/referral/timeline');
         case ReferralResponseStatus.declinedReported:
-          context.go('/referral/facility-match');
+          context.go('/bidan/referral/facility-match');
         case ReferralResponseStatus.moreInformationRequested:
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -84,6 +84,20 @@ class _ReceivingFacilityScreenState extends State<ReceivingFacilityScreen> {
   @override
   Widget build(BuildContext context) {
     final referral = context.watch<ReferralState>().referral;
+    if (referral.step == ReferralStep.accepted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.go('/bidan/referral/timeline');
+      });
+      return const SizedBox.shrink();
+    }
+
+    if (referral.step == ReferralStep.arrived) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.go('/bidan/home');
+      });
+      return const SizedBox.shrink();
+    }
+
     final facility = referral.selectedFacility;
 
     return SingleChildScrollView(
@@ -96,12 +110,12 @@ class _ReceivingFacilityScreenState extends State<ReceivingFacilityScreen> {
             title: 'Catat Respons Faskes',
             subtitle:
                 'Bidan mencatat hasil komunikasi eksternal beserta sumbernya.',
-            onBack: () => context.go('/referral/facility-match'),
+            onBack: () => context.go('/bidan/referral/facility-match'),
           ),
           const SizedBox(height: 20),
           if (facility == null)
             _MissingFacility(
-              onChoose: () => context.go('/referral/facility-match'),
+              onChoose: () => context.go('/bidan/referral/facility-match'),
             )
           else ...[
             _SelectedFacilityHero(
