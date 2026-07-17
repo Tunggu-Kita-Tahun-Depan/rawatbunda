@@ -90,10 +90,10 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _QuickActionCard(
-                  icon: Icons.local_hospital_outlined,
-                  title: 'Faskes',
-                  subtitle: 'Lihat rujukan masuk',
-                  onTap: () => context.go('/referral/receiving'),
+                  icon: Icons.edit_note_rounded,
+                  title: 'Dokumentasi',
+                  subtitle: 'Buat dan periksa SOAP',
+                  onTap: () => context.go('/bidan/documentation'),
                 ),
               ),
             ],
@@ -102,7 +102,7 @@ class HomeScreen extends StatelessWidget {
           const InfoNotice(
             title: 'Pendukung koordinasi, bukan diagnosis',
             message:
-                'RawatBunda membantu menutup alur rujukan. Keputusan klinis tetap dibuat oleh tenaga kesehatan dan seluruh data demo bersifat sintetis.',
+                'RawatBunda membantu bidan memprioritaskan alur kerja, mendokumentasikan, dan mengoordinasikan rujukan. Keputusan klinis tetap dibuat bidan dan seluruh data demo bersifat sintetis.',
             icon: Icons.health_and_safety_outlined,
           ),
         ],
@@ -113,6 +113,7 @@ class HomeScreen extends StatelessWidget {
   static String _nextRoute(ReferralStep step) => switch (step) {
     ReferralStep.draft => '/referral/intake',
     ReferralStep.sent || ReferralStep.acknowledged => '/referral/receiving',
+    ReferralStep.declined => '/referral/facility-match',
     ReferralStep.accepted || ReferralStep.arrived => '/referral/timeline',
   };
 }
@@ -278,6 +279,7 @@ class _ActiveReferralCard extends StatelessWidget {
     ReferralStep.sent => 'Terkirim',
     ReferralStep.acknowledged => 'Ditinjau',
     ReferralStep.accepted => 'Diterima',
+    ReferralStep.declined => 'Perlu rute ulang',
     ReferralStep.arrived => 'Selesai',
   };
 }
