@@ -1,111 +1,157 @@
-# RawatBunda (Flutter)
+# RawatBunda
 
-RawatBunda is an offline-capable maternal-care workflow prototype for midwife. It
-helps a midwife review patient data, prioritize follow-up, find the nearest
-eligible facility, record an externally obtained referral response, and prepare
-reviewed clinical documentation.
+RawatBunda is an integrated maternal health decision support and referral platform for midwives. It helps healthcare workers document examinations, review patient history, identify cases that require attention, and coordinate referrals more efficiently.
 
-The current requirements are in `RAWATBUNDA_PRD_V2rev.md`. The implementation
-boundary for this branch is documented in `PERSON_B_IMPLEMENTATION_PLAN.md`.
+The platform combines Flutter, Supabase, speech to text, and a protected machine learning backend. Automated results are treated as clinical support only. A midwife must review and confirm the extracted information before it becomes a confirmed encounter or affects the operational patient worklist.
 
-> All people, measurements, facilities, and referral responses in the demo are
-> synthetic or simulated. RawatBunda is decision support, not a diagnosis, and
-> is not approved for clinical use.
+> RawatBunda is currently a hackathon prototype. The included patient records, facilities, measurements, and referral responses are synthetic or simulated. The system is not a diagnostic tool and has not been approved for clinical use.
 
-## Roles and access
+## What It Does
 
-There are exactly three application roles. Routes are guarded by role, so a
-signed-in user cannot open another role's screens by typing its URL.
+RawatBunda supports the maternal care journey from examination to referral while keeping healthcare professionals in control of every important decision.
 
-| Role | Current access |
-| --- | --- |
-| **Bidan** | Referral workflow, capable-facility recommendation, response recording, timeline, and reviewed SOAP/document previews |
-| **Pasien** | Own summary, monitoring history, schedule, and profile; permanently read-only |
-| **Admin** | Facility reference overview and profile; no clinical actions |
+### 1. AI Assisted Clinical Documentation
 
-There is no receiving-hospital account. A midwife contacts a hospital outside the
-app and records the response, channel, source, contact name, time, and decline
-reason. Demo responses are clearly labelled as simulated.
+The application can record a clinical conversation and send the audio to the protected backend. Speech to text processing produces a transcript, structured health fields, warnings, and a draft SOAP note. The original audio is not retained by the application backend.
 
-## Run locally
+### 2. Midwife Reviewed Clinical Records
 
-The repository contains a public Supabase URL and anon/publishable key as
-build-time defaults. A normal run therefore opens the Supabase login flow:
+Extracted measurements and SOAP content remain editable drafts. The midwife must verify the values, units, symptoms, and clinical context before confirming the encounter. Unreviewed drafts never become confirmed patient records.
 
-```powershell
-flutter pub get
-flutter run -d web-server --web-port 8080
+### 3. Maternal Risk Classification and Safe Prioritization
+
+Confirmed clinical data is processed by the maternal risk model and validated before persistence. The current model operates in experimental shadow mode. Its result is stored for traceability, while governed deterministic safety rules create the operational priority snapshot used by the application.
+
+### 4. Capability Based Referral Coordination
+
+For patients who need referral, the application helps the midwife review eligible facilities based on availability and required capabilities. Facility responses obtained through external communication can be recorded with their source, timestamp, contact information, and decline reason.
+
+### 5. Real Time Patient and Referral Monitoring
+
+Confirmed patients, encounters, predictions, priorities, and referral updates are stored in Supabase. Authorized Flutter clients read the database and refresh their worklists when relevant records change, providing a consistent source of truth across devices.
+
+## Clinical Workflow
+
+```text
+Clinical conversation or manual data entry
+  -> Protected speech to text draft
+  -> Structured fields and SOAP draft
+  -> Midwife review and correction
+  -> Confirmed assessment
+  -> Validated machine learning inference
+  -> Deterministic operational priority
+  -> Supabase persistence
+  -> Flutter patient worklist and referral flow
 ```
 
-Open the printed URL in a browser. Never put a Supabase `service_role` key in
-Flutter code or in `--dart-define` values.
+Incomplete model inputs do not silently become zero values. They produce an invalid input result with no model score. Model failures also cannot lower the deterministic safety priority or block an urgent referral workflow.
 
-### In-memory demo mode
+## Roles and Access
 
-Clear both Supabase defines to disable login and network access. `DEMO_ROLE`
-accepts `bidan`, `pasien`, or `admin` and defaults to `bidan`.
+### Bidan
 
-```powershell
-flutter run -d web-server --web-port 8080 --dart-define=SUPABASE_URL= --dart-define=SUPABASE_KEY= --dart-define=DEMO_ROLE=bidan
-flutter run -d web-server --web-port 8080 --dart-define=SUPABASE_URL= --dart-define=SUPABASE_KEY= --dart-define=DEMO_ROLE=pasien
-flutter run -d web-server --web-port 8080 --dart-define=SUPABASE_URL= --dart-define=SUPABASE_KEY= --dart-define=DEMO_ROLE=admin
+The bidan role can manage assigned patients, add pregnancy episodes and encounters, review speech to text drafts, confirm clinical information, view patient priority, prepare SOAP documentation, select referral facilities, record externally obtained responses, and follow the referral timeline.
+
+### Pasien
+
+The pasien role provides a read only view of the patient's summary, monitoring history, schedule, and profile. Patients cannot edit clinical records, priorities, SOAP notes, facilities, or referral status.
+
+### Admin
+
+The admin role can view facility reference information and account details. It does not receive clinical decision permissions and cannot confirm SOAP notes, classify patients, or choose referrals.
+
+Application routes are guarded by role. Trusted roles come from Supabase `app_metadata`, not user editable profile metadata.
+
+## Architecture
+
+```text
+Flutter application
+  -> Role aware screens and navigation
+  -> Provider state layer
+  -> Repository interfaces
+     -> Supabase repositories for authenticated data and realtime updates
+     -> In memory repositories for local demonstration mode
+  -> ClinicalBackendClient
+     -> Protected Python backend
+        -> Supabase token and bidan role verification
+        -> Patient assignment validation
+        -> Speech to text draft extraction
+        -> Strict request and response validation
+        -> Machine learning inference
+        -> Service role database functions
+  -> Supabase PostgreSQL
+     -> Row Level Security
+     -> Longitudinal patient records
+     -> Prediction and priority history
+     -> Realtime change publication
 ```
 
-The in-memory mode is the hackathon safety net. Data resets when the app is
-restarted and does not sync between devices.
+The Supabase service role key is used only by the Python backend. It must never be placed in Flutter, browser code, a mobile build, or a committed environment file.
 
-## Supabase setup
+## Technology Stack
 
-1. Open the Supabase project SQL Editor.
-2. Run `supabase/migrations/001_init.sql`. It creates or updates the tables,
-   synthetic facilities, realtime publication, and role-based RLS policies.
-3. Create and auto-confirm demo users under **Authentication > Users**.
-4. Assign each user a trusted server-side `app_metadata.app_role`. For example:
+### Application
+
+Flutter, Dart, Provider, GoRouter, Supabase Flutter, HTTP, Record, and UUID.
+
+### Backend and Machine Learning
+
+Python, FastAPI, Uvicorn, scikit learn, pandas, NumPy, joblib, JSON Schema, Groq speech to text, and strict typed contracts.
+
+### Data Platform
+
+Supabase Authentication, PostgreSQL, Row Level Security, database functions, and realtime subscriptions.
+
+## Project Structure
+
+```text
+lib/core/                         configuration, routing, theme, and safety rules
+lib/features/                     role based application screens
+lib/models/                       patient, referral, facility, and document models
+lib/repositories/                 Supabase and in memory data boundaries
+lib/services/                     protected backend client and ML contracts
+lib/state/                        authentication and workflow state
+ML-Classification/               protected backend and maternal risk model
+ML-Classification/artifacts/     versioned model artifact and manifest
+ML-Classification/schemas/       JSON request and response contracts
+ML-Classification/tests/         backend integration tests
+supabase/migrations/              database schema, policies, functions, and views
+test/                             Flutter widget and workflow tests
+```
+
+## Database Setup
+
+Apply the Supabase migrations in this order:
+
+1. `supabase/migrations/001_init.sql`
+2. `supabase/migrations/002_ml_backend.sql`
+3. `supabase/migrations/003_clinical_workflow.sql`
+
+The migrations create the referral foundation, longitudinal patient tables, assigned bidan access, speech to text drafts, confirmed encounters, machine learning jobs and predictions, operational priority snapshots, security policies, database functions, views, and realtime publication.
+
+Create users through Supabase Authentication and assign a trusted application role through `app_metadata`. For example:
 
 ```sql
 update auth.users
 set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
   || '{"app_role":"bidan"}'::jsonb
-where email = 'bidan@demo.id';
+where email = 'bidan@example.com';
 ```
 
-Repeat with `pasien` and `admin` for the other demo users. Sign out and sign in
-again after changing a role so the access token contains the new metadata. Do
-not store access roles in editable `user_metadata`.
+Sign out and sign in again after changing the role so the new access token contains the updated metadata.
 
-The migration intentionally permits referral writes only to `bidan`. Pasien is
-read-only at both UI/repository design level in this prototype, while Admin can
-maintain facility reference data through RLS but currently receives a read-only
-screen.
+## Backend Setup
 
-## Implemented Person B flows
+The protected backend requires Python 3.14 and the dependencies declared inside `ML-Classification/requirements.txt`.
 
-### Bidan referral coordination
+Install the backend package:
 
-1. Enter a synthetic patient assessment.
-2. Review the safety flag, which is a transparent rule and not an AI diagnosis.
-3. For urgent cases, show only facilities marked available and PONEK-capable,
-   then order them by distance.
-4. Select a facility and record the response obtained by phone, WhatsApp, or
-   another external channel.
-5. A decline requires a reason, remains in the attempt history, and returns the
-   midwife to the next eligible facility. An acceptance opens the timeline.
+```powershell
+cd ML-Classification
+python -m pip install -e .
+```
 
-### Typed SOAP/document path
-
-The hackathon-safe P0 path works without an LLM: the midwife types a narrative,
-confirmed encounter data populates the read-only Objective section, and the
-midwife reviews/edits Assessment and Plan before signing. Signing requires human
-confirmation. The signed data can produce separate clinical handoff and
-minimal family-instruction previews.
-
-Speech-to-text is integrated as a protected draft workflow. Audio is transcribed
-and converted into SOAP plus structured fields, but nothing becomes a confirmed
-encounter until the bidan reviews the form and explicitly confirms it. The
-backend then writes the encounter, validates and stores the ML result, and
-creates the deterministic operational priority snapshot read by Flutter.
-
-Backend runtime variables stay on the server only:
+Configure these values in the backend process environment:
 
 ```text
 SUPABASE_URL
@@ -116,44 +162,79 @@ GROQ_API_KEY
 CORS_ALLOWED_ORIGINS
 ```
 
-For local development, Flutter Web derives `BACKEND_URL` from the browser host
-and port `8081`, while an Android emulator defaults to
-`http://10.0.2.2:8081`. A physical device still needs the development
-computer's LAN address, for example
-`--dart-define=BACKEND_URL=http://192.168.1.10:8081`. A deployed Web build must
-use an HTTPS backend override. Localhost Web origins are accepted by default;
-set `CORS_ALLOWED_ORIGINS` to a comma-separated list of additional trusted Web
-origins.
+`GROQ_API_KEY` is required for speech to text. `CORS_ALLOWED_ORIGINS` is optional for localhost development and can contain a comma separated list of additional trusted web origins.
 
-## Architecture
+Start the backend:
 
-```text
-UI (features/*)
-  -> AppAuthState / ReferralState / DocumentationState
-  -> repository interfaces
-     -> InMemory implementations (offline demo)
-     -> Supabase implementations (auth, PostgreSQL, realtime)
+```powershell
+cd ML-Classification
+python serve_backend.py --host 0.0.0.0 --port 8081
 ```
 
-The UI does not call Supabase directly. Role resolution uses trusted
-`app_metadata`, repository interfaces keep the offline path replaceable, and
-clinical safety rules remain centralized in
-`lib/core/constants/clinical_rules.dart`.
+The backend exposes the following application endpoints:
 
-Key folders:
+1. `GET /health/live`
+2. `GET /health/ready`
+3. `POST /v1/patients`
+4. `POST /v1/stt/drafts`
+5. `POST /v1/assessments/evaluate`
+6. `POST /v1/assessments/confirm`
 
-```text
-lib/core/router/             role-aware routes and redirect guards
-lib/features/pasien_portal/ view-only patient screens
-lib/features/admin/         admin facility overview
-lib/features/facility_match capability-first recommendation UI
-lib/features/receiving/     bidan-recorded external facility response
-lib/features/documentation/ typed narrative, SOAP review, output previews
-lib/models/                 roles, referral provenance, documents, portal data
-lib/repositories/           in-memory and Supabase boundaries
-lib/state/                  authentication, referral, and documentation state
-supabase/migrations/         schema, seed data, RLS, realtime setup
+The internal model endpoint is separate from the protected application workflow. Flutter must use the protected backend endpoints and must not call the internal prediction endpoint directly.
+
+## Flutter Setup
+
+Install Flutter dependencies:
+
+```powershell
+flutter pub get
 ```
+
+### Flutter Web
+
+For local web development, the application derives the backend URL from the browser host and uses port `8081`.
+
+```powershell
+flutter run -d chrome
+```
+
+Localhost browser origins are accepted by the backend. Restart the backend after changing its CORS configuration.
+
+### Android Emulator
+
+The Android emulator automatically uses `http://10.0.2.2:8081` to reach the backend running on the development computer.
+
+```powershell
+flutter run -d <emulator-id>
+```
+
+### Physical Android Device
+
+The phone and development computer must use the same network. Start the backend with host `0.0.0.0`, then provide the computer's current LAN address:
+
+```powershell
+flutter run -d <device-id> --dart-define=BACKEND_URL=http://<computer-ip>:8081
+```
+
+Before starting Flutter, open `http://<computer-ip>:8081/health/ready` from the phone browser. A successful JSON response confirms that the phone can reach the backend. Windows Firewall must allow inbound access to port `8081`.
+
+## In Memory Demo Mode
+
+The application includes an in memory fallback for demonstrations without Supabase login or backend access. Clear both public Supabase build values and choose one role:
+
+```powershell
+flutter run -d chrome --dart-define=SUPABASE_URL= --dart-define=SUPABASE_KEY= --dart-define=DEMO_ROLE=bidan
+```
+
+Supported demo roles are `bidan`, `pasien`, and `admin`. In memory data resets when the application restarts and does not synchronize across devices.
+
+## Current Prototype Boundaries
+
+1. The maternal risk classifier is experimental and is not authorized to diagnose a patient or directly choose operational urgency.
+2. Referral facility responses are entered by the bidan after phone, WhatsApp, or other external communication. There is currently no receiving hospital account.
+3. The separate document preview workflow and pasien portal sample content still use in memory repositories.
+4. Production offline synchronization, conflict resolution, encrypted local storage, and live facility capacity integration are not implemented yet.
+5. Clinical validation, privacy review, audit retention policy, monitoring, and deployment hardening are required before real world use.
 
 ## Verification
 
@@ -161,17 +242,9 @@ supabase/migrations/         schema, seed data, RLS, realtime setup
 flutter analyze
 flutter test
 flutter build web --no-pub
+
+cd ML-Classification
+python -m unittest discover -s tests -v
 ```
 
-Widget and state tests cover role guards, patient read-only behavior, Admin's
-lack of clinical actions, decline/reroute/accept referral history, and SOAP
-human-review requirements.
-
-## Deferred to other workstreams
-
-- Person A's full patient directory, add-patient flow, longitudinal encounter
-  storage, and ML prioritization integration.
-- Production offline queue/conflict resolution and encrypted local storage.
-- Live facility capacity or SATUSEHAT integration.
-- Gemini/STT extraction, prompt validation, and production document storage.
-- Clinical validation, privacy review, audit retention, and deployment hardening.
+The backend tests cover authentication, role enforcement, patient assignment, patient creation, speech to text drafts, confirmation requirements, idempotency, incomplete input handling, prediction validation, persistence, and browser CORS behavior.
