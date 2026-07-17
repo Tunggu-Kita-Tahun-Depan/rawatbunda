@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 import '../../core/constants/priority_rules.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/patient.dart';
+import '../../models/referral.dart';
 import '../../shared/widgets/priority_band_pill.dart';
 import '../../shared/widgets/rawat_bunda_components.dart';
 import '../../state/patient_state.dart';
+import '../../state/referral_state.dart';
 import 'patient_directory_screen.dart' show relativeDay;
 
 /// Patient overview (PRD v2.2 §12): pregnancy context, current operational
@@ -193,7 +195,7 @@ class _PatientOverviewScreenState extends State<PatientOverviewScreen> {
                 const InfoNotice(
                   title: 'Belum ada kunjungan',
                   message:
-                      'Catat kunjungan pertama untuk mulai memantau '
+                      'Input/update data pertama untuk mulai memantau '
                       'tren pasien ini.',
                 )
               else
@@ -202,14 +204,65 @@ class _PatientOverviewScreenState extends State<PatientOverviewScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        FilledButton.icon(
-          onPressed: () => context.go('/bidan/referral/intake'),
-          icon: const Icon(Icons.sync_alt_rounded),
-          label: const Text('Mulai rujukan'),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () =>
+                    context.push('/bidan/patients/${patient.id}/encounter'),
+                icon: const Icon(Icons.edit_note_rounded),
+                label: const Text('Input/update data'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: () => _startReferral(context, patient, assessment),
+                icon: const Icon(Icons.sync_alt_rounded),
+                label: const Text('Mulai rujukan'),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 20),
       ],
     );
+  }
+
+  void _startReferral(
+    BuildContext context,
+    Patient patient,
+    PriorityAssessment assessment,
+  ) {
+    final latest = patient.latestEncounter;
+    if (latest == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Input/update data dulu sebelum mulai rujukan.'),
+          action: SnackBarAction(
+            label: 'Input/update data',
+            onPressed: () =>
+                context.push('/bidan/patients/${patient.id}/encounter'),
+          ),
+        ),
+      );
+      return;
+    }
+
+    context.read<ReferralState>().updateIntake(
+      patientName: patient.name,
+      gestationalAgeWeeks: patient.gestationalAgeWeeks,
+      systolic: latest.systolic,
+      diastolic: latest.diastolic,
+      hasSevereHeadache: latest.severeHeadache,
+      hasVisualDisturbance: latest.visualDisturbance,
+      urgency: switch (assessment.band) {
+        PriorityBand.darurat => Urgency.emergency,
+        PriorityBand.prioritas => Urgency.urgent,
+        PriorityBand.rutin => Urgency.routine,
+      },
+    );
+    context.go('/bidan/referral/facility-match');
   }
 }
 
@@ -226,6 +279,10 @@ class _VisitRow extends StatelessWidget {
       else
         'TD tidak tercatat',
       if (visit.weightKg != null) 'BB ${visit.weightKg} kg',
+      'BMI ${visit.bmiKgM2.toStringAsFixed(1)}',
+      'GD ${visit.bloodSugar.display}',
+      'Suhu ${visit.bodyTemperature.display}',
+      'Nadi ${visit.heartRateBpm} bpm',
       switch (visit.urineProtein) {
         UrineProtein.notTested => null,
         UrineProtein.negative => 'Protein urin negatif',
@@ -251,6 +308,13 @@ class _VisitRow extends StatelessWidget {
             style: Theme.of(
               context,
             ).textTheme.labelMedium?.copyWith(color: AppTheme.primaryDark),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            visit.recordId,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppTheme.mutedInk),
           ),
           const SizedBox(height: 4),
           Text(

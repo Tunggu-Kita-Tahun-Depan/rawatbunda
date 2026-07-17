@@ -10,6 +10,31 @@ import 'package:tunggukitatahundepan2026/state/documentation_state.dart';
 import 'package:tunggukitatahundepan2026/state/referral_state.dart';
 
 void main() {
+  test('referral row can omit contact_events for older Supabase schemas', () {
+    final referral = ReferralCase()
+      ..patientName = 'Ibu Demo'
+      ..contactEvents.add(
+        FacilityContactEvent(
+          facilityName: 'RSUD Demo',
+          status: ReferralResponseStatus.acceptedReported,
+          contactName: 'Petugas Demo',
+          channel: ContactChannel.phone,
+          responseSource: 'Telepon',
+          recordedAt: DateTime(2026, 7, 17, 9),
+          recordedBy: 'Bidan Demo',
+          isSimulated: true,
+        ),
+      );
+
+    expect(referral.toRow(), contains('contact_events'));
+    expect(
+      referral.toRow(includeContactEvents: false).containsKey(
+        'contact_events',
+      ),
+      isFalse,
+    );
+  });
+
   test(
     'decline requires a reason and rerouting preserves attempt history',
     () async {

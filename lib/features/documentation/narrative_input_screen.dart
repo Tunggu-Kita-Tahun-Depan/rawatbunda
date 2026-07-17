@@ -75,13 +75,13 @@ class _NarrativeInputScreenState extends State<NarrativeInputScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Untuk demo saat ini, lengkapi Input Data Ibu terlebih dahulu. Data pasien/kunjungan akan dipasok modul Person A.',
+                      'Pilih pasien dan input/update data terlebih dahulu agar data dokumentasi punya konteks.',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
                     FilledButton(
-                      onPressed: () => context.go('/referral/intake'),
-                      child: const Text('Buka Input Data Ibu'),
+                      onPressed: () => context.go('/bidan/patients'),
+                      child: const Text('Buka Pasien'),
                     ),
                   ],
                 ),

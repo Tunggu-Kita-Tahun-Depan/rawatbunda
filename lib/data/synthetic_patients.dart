@@ -17,20 +17,42 @@ List<Patient> buildSyntheticPatients({DateTime? now}) {
     int? sys,
     int? dia,
     double? weight,
+    double height = 158,
+    double bloodSugar = 92,
+    double temperature = 36.7,
+    int heartRate = 84,
+    bool previousComplications = false,
+    bool preexistingDiabetes = false,
+    bool gestationalDiabetes = false,
+    bool mentalHealthIndicator = false,
     bool headache = false,
     bool visual = false,
     UrineProtein urine = UrineProtein.notTested,
     String notes = '',
-  }) => Encounter(
-    recordedAt: t.subtract(Duration(days: daysAgo, hours: 2)),
-    systolic: sys,
-    diastolic: dia,
-    weightKg: weight,
-    severeHeadache: headache,
-    visualDisturbance: visual,
-    urineProtein: urine,
-    notes: notes,
-  );
+  }) {
+    final measuredAt = t.subtract(Duration(days: daysAgo, hours: 2));
+    final safeWeight = weight ?? 56;
+    return Encounter(
+      recordId: 'synthetic-${measuredAt.millisecondsSinceEpoch}',
+      recordedAt: measuredAt,
+      systolic: sys,
+      diastolic: dia,
+      bloodSugar: NumericMeasurement(value: bloodSugar, unit: 'mg/dL'),
+      bodyTemperature: NumericMeasurement(value: temperature, unit: '°C'),
+      weightKg: weight,
+      heightCm: height,
+      bmiKgM2: calculateBmiKgM2(weightKg: safeWeight, heightCm: height),
+      previousComplications: previousComplications,
+      preexistingDiabetes: preexistingDiabetes,
+      gestationalDiabetes: gestationalDiabetes,
+      mentalHealthIndicator: mentalHealthIndicator,
+      heartRateBpm: heartRate,
+      severeHeadache: headache,
+      visualDisturbance: visual,
+      urineProtein: urine,
+      notes: notes,
+    );
+  }
 
   final special = <Patient>[
     // The demo star: four visits, worsening trend, ends darurat.
@@ -51,6 +73,7 @@ List<Patient> buildSyntheticPatients({DateTime? now}) {
           sys: 164,
           dia: 112,
           weight: 62.5,
+          previousComplications: true,
           headache: true,
           urine: UrineProtein.positive,
           notes: 'Mengeluh sakit kepala hebat sejak semalam',
@@ -77,7 +100,9 @@ List<Patient> buildSyntheticPatients({DateTime? now}) {
       gravida: 3,
       para: 2,
       history: ['Hipertensi kronis'],
-      encounters: [visit(2, sys: 162, dia: 100, weight: 66.0)],
+      encounters: [
+        visit(2, sys: 162, dia: 100, weight: 66.0, previousComplications: true),
+      ],
     ),
     // Needs verification: last data too old.
     Patient(

@@ -103,7 +103,7 @@ class ReferralCase {
 
   /// Serialize for the `referral_cases` table (id/created_at are set by
   /// the database).
-  Map<String, dynamic> toRow() => {
+  Map<String, dynamic> toRow({bool includeContactEvents = true}) => {
     'patient_name': patientName,
     'gestational_age_weeks': gestationalAgeWeeks,
     'systolic': systolic,
@@ -115,7 +115,8 @@ class ReferralCase {
     'facility_distance_km': selectedFacility?.distanceKm,
     'step': step.name,
     'sent_at': sentAt?.toUtc().toIso8601String(),
-    'contact_events': contactEvents.map((event) => event.toJson()).toList(),
+    if (includeContactEvents)
+      'contact_events': contactEvents.map((event) => event.toJson()).toList(),
   };
 
   static ReferralCase fromRow(Map<String, dynamic> row) {
