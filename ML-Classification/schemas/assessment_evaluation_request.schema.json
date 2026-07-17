@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rawatbunda.local/schemas/assessment_evaluation_request.schema.json",
+  "title": "RawatBunda assessment evaluation request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "patient_id",
+    "pregnancy_episode_id",
+    "encounter_id",
+    "model_input"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "patient_id": {"type": "string", "format": "uuid"},
+    "pregnancy_episode_id": {"type": "string", "format": "uuid"},
+    "encounter_id": {"type": "string", "format": "uuid"},
+    "model_input": {"$ref": "#/$defs/modelInput"}
+  },
+  "$defs": {
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": {"type": "number"},
+        "unit": {"type": "string"}
+      }
+    },
+    "modelInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Predictors are optional at the transport boundary. Missing predictors produce a persisted invalid_input result with a null score and are never imputed silently.",
+      "properties": {
+        "measured_at": {"type": "string", "format": "date-time"},
+        "age_years": {"type": "number"},
+        "systolic_bp_mmhg": {"type": "number"},
+        "diastolic_bp_mmhg": {"type": "number"},
+        "blood_sugar": {
+          "allOf": [
+            {"$ref": "#/$defs/measurement"},
+            {"properties": {"unit": {"enum": ["mmol/L", "mg/dL"]}}}
+          ]
+        },
+        "body_temperature": {
+          "allOf": [
+            {"$ref": "#/$defs/measurement"},
+            {"properties": {"unit": {"enum": ["C", "F"]}}}
+          ]
+        },
+        "bmi_kg_m2": {"type": "number"},
+        "previous_complications": {"type": "boolean"},
+        "preexisting_diabetes": {"type": "boolean"},
+        "gestational_diabetes": {"type": "boolean"},
+        "mental_health_indicator": {"type": "boolean"},
+        "heart_rate_bpm": {"type": "number"}
+      }
+    }
+  }
+}

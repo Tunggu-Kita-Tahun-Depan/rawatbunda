@@ -1,0 +1,3 @@
+[console_scripts]
+rawatbunda-ml-backend = iburujuk_ml.backend:main
+rawatbunda-model-service = iburujuk_ml.api:main
