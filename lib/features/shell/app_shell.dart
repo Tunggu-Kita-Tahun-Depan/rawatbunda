@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../models/app_profile.dart';
 
 /// Primary navigation for the bidan-facing prototype.
 ///
@@ -9,9 +10,14 @@ import '../../core/theme/app_theme.dart';
 /// and the workflow itself remains guided rather than acting like four
 /// unrelated app sections.
 class AppShell extends StatelessWidget {
-  const AppShell({super.key, required this.navigationShell});
+  const AppShell({
+    super.key,
+    required this.navigationShell,
+    required this.role,
+  });
 
   final StatefulNavigationShell navigationShell;
+  final AppRole role;
 
   @override
   Widget build(BuildContext context) {
@@ -56,23 +62,7 @@ class AppShell extends StatelessWidget {
                       initialLocation: index == navigationShell.currentIndex,
                     );
                   },
-                  destinations: const [
-                    NavigationDestination(
-                      icon: Icon(Icons.home_outlined),
-                      selectedIcon: Icon(Icons.home_rounded),
-                      label: 'Beranda',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.sync_alt_rounded),
-                      selectedIcon: Icon(Icons.sync_alt_rounded),
-                      label: 'Rujukan',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.person_outline_rounded),
-                      selectedIcon: Icon(Icons.person_rounded),
-                      label: 'Profil',
-                    ),
-                  ],
+                  destinations: _destinations(role),
                 ),
               ),
             ),
@@ -81,4 +71,54 @@ class AppShell extends StatelessWidget {
       ),
     );
   }
+
+  static List<NavigationDestination> _destinations(AppRole role) =>
+      switch (role) {
+        AppRole.bidan => const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Beranda',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.sync_alt_rounded),
+            selectedIcon: Icon(Icons.sync_alt_rounded),
+            label: 'Rujukan',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded),
+            label: 'Profil',
+          ),
+        ],
+        AppRole.pasien => const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Beranda',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month_rounded),
+            label: 'Monitoring',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded),
+            label: 'Profil',
+          ),
+        ],
+        AppRole.admin => const [
+          NavigationDestination(
+            icon: Icon(Icons.local_hospital_outlined),
+            selectedIcon: Icon(Icons.local_hospital_rounded),
+            label: 'Fasilitas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded),
+            label: 'Profil',
+          ),
+        ],
+      };
 }
